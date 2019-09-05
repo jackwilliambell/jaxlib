@@ -109,7 +109,7 @@ restricted to Base Types. See 'Base Types'."""
 
     def __init__(self, parent=None, properties=None, immutable=False):
         """Initializes a new instance of the PropertySheet class,
-optionally with a parent and/or initial properties."""
+        optionally with a parent and/or initial properties."""
         self._parent = parent
 
         self._immutable = immutable
@@ -125,15 +125,15 @@ optionally with a parent and/or initial properties."""
 
     def isImmutable(self):
         """Returns true if the property sheet is immutable, 
-otherwise returns false."""
+        otherwise returns false."""
         return self._immutable
 
     def mergeProperties(self, properties):
         """Merges the contents of a dictionary or property sheet 
-into the current property sheet.
+        into the current property sheet.
 
-NOTE: Only string-keyed base-type values are merged. 
-Invalid values are ignored."""
+        NOTE: Only string-keyed base-type values are merged.
+        Invalid values are ignored."""
         if isDict(properties):
             # TODO: Consider reworking this as a comprehension for
             # better performance. OTOH, this is easy to read. (JWB)
@@ -277,7 +277,7 @@ def checkBaseType(val, baseType):
 
 def isBaseTypeList(val):
     """Returns true if the passed value is a list where all members
-are valid base types."""
+    are valid base types."""
     # Is it a list?
     if isList(val) or isTuple(val):
         # Iterate.
@@ -288,11 +288,11 @@ are valid base types."""
             # If the value is a dict, recurse for failure.
             elif isDict(v) and not isBaseTypeDict(v):
                 return False
-            # Otherwise, it it a base type at all?.
+            # Otherwise, is the value a base type at all?.
             elif not isBaseType(v):
                 return False
     else:
-        return False  # Not a list
+        return False  # Not a list.
     
     return True
 
@@ -313,13 +313,14 @@ def isBaseTypeDict(val):
             # If the value is a dict, recurse for failure.
             elif isDict(v) and not isBaseTypeDict(v):
                 return False
-            # Otherwise, it it a base type at all?.
+            # Otherwise, is the value a base type at all?.
             elif not isBaseType(v):
                 return False
     else:
-        return False # Not a list
+        return False  # Not a dict.
     
     return True
+
 
 def isBaseType(val):
     """Returns true if the passed value is a valid base type,
@@ -330,6 +331,7 @@ def isBaseType(val):
     # don't break anything or simply do something non-optimal.
     if isNone(val) or isBool(val) or isString(val) or isInt(val) or  \
         isNum(val) or isPropertySheet(val) or isPackedState(val):
+        # TODO: Add date, url, and blob checks
         return True
     elif (isList(val) or isTuple(val)) and isBaseTypeList(val):
         return True
