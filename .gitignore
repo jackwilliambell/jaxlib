@@ -1,0 +1,15 @@
+;;
+;; gitignore for Python using pyCharm
+;;
+
+;;files to ignore
+;;settings.py
+
+;;extensions to ignore
+*.log
+*.pot
+*.pyc
+
+;;directories to ignore
+.idea/
+venv/
