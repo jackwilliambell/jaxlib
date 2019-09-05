@@ -48,8 +48,9 @@ Copyright (c) 2016, 2018 Jack William Bell. License: MIT"""
 
 from enum import Enum
 
-from typehelpers import isNone, isBool, isString, isInt, \
+from jaxtools.typehelpers import isNone, isBool, isString, isInt, \
     isNum, isTuple, isList, isDict
+
 
 class BaseTypes(Enum):
     """Enumeration of the base type IDs."""
@@ -66,6 +67,7 @@ class BaseTypes(Enum):
     PROPERTYSHEET = 32
     PACKEDSTATE = 33
     UNKNOWN = 255
+
 
 class PropertySheet(object):
     """A property sheet is a string-keyed map of Base Type 
@@ -112,14 +114,14 @@ optionally with a parent and/or initial properties."""
 
         self._immutable = immutable
 
-        self.clearProperties()
+        self.clearSheet()
 
         if properties:
             self.mergeProperties(properties)
 
     def forceImmutable(self):
         """Forces the property sheet to be immutable."""
-        self._immutable = true
+        self._immutable = True
 
     def isImmutable(self):
         """Returns true if the property sheet is immutable, 
@@ -149,8 +151,8 @@ Invalid values are ignored."""
 
     def getProperty(self, propertyKey, default=None):
         """Returns the value of the property specified by the 
-property key. If no property exists for the key or the property
-value is 'None', the default value is returned."""
+        property key. If no property exists for the key or the property
+        value is 'None', the default value is returned."""
         val = None
         try:
             val = self._properties[propertyKey]
@@ -164,10 +166,10 @@ value is 'None', the default value is returned."""
 
     def setProperty(self, propertyKey, propertyValue, default=None):
         """Sets the value of the property specified by the 
-property key. If the property value is the same as 
-the default value, the property is cleared instead. Raises
-a ValueError exception if the property sheet is immutable.
-Raises a KeyError exception if the key is not a string."""
+        property key. If the property value is the same as
+        the default value, the property is cleared instead. Raises
+        a ValueError exception if the property sheet is immutable.
+        Raises a KeyError exception if the key is not a string."""
         if self._immutable: 
             raise ValueError("Cannot set property. Property sheet is immutable.")
 
@@ -204,34 +206,35 @@ Raises a KeyError exception if the key is not a string."""
         on deeply nested property sheets is not recommended."""
         raise NotImplementedError("Not yet implemented...")
 
+
 class PackedState(object):
     """Represents the state of a Packable object. Can be 'unpacked'
-to a new object using any class that supports the same state 
-format design. How it is unpacked is implementation dependent.
-See Packables for more details.
+    to a new object using any class that supports the same state
+    format design. How it is unpacked is implementation dependent.
+    See Packables for more details.
 
-**Description:**
+    **Description:**
 
-Provides two public attributes:
+    Provides two public attributes:
 
-* stateId - A string value uniquely specifying the state design
-and interface of the packed object; should be a URL linking the 
-class and state specification, but can be any string (if not a
-URL it is recommended you use Java-style namespaced class names)
+    * stateId - A string value uniquely specifying the state design
+    and interface of the packed object; should be a URL linking the
+    class and state specification, but can be any string (if not a
+    URL it is recommended you use Java-style namespaced class names)
 
-* properties - A property sheet or Dictionary containing the 
-packed object's state
+    * properties - A property sheet or Dictionary containing the
+    packed object's state
 
-NOTE: These attributes are read only. Attempting to set them 
-will raise an exception.
+    NOTE: These attributes are read only. Attempting to set them
+    will raise an exception.
 
-NOTE: The state may be immutable or mutable. If it is mutable it
-can be modified by setting or clearing properties. Generally this 
-is a really bad idea. Don't do it."""
+    NOTE: The state may be immutable or mutable. If it is mutable it
+    can be modified by setting or clearing properties. Generally this
+    is a really bad idea. Don't do it."""
     
     def __init__(self, stateId, properties):
         """Sets up the new PackedState instance with the passed
-State ID and State Property Sheet."""
+        State ID and State Property Sheet."""
         # Verify types.
         if not isString(stateId):
             raise TypeError("The stateId argument must be a String or Unicode instance")
@@ -250,10 +253,8 @@ State ID and State Property Sheet."""
             
     def toDict(self):
         """Creates a dictionary from the PackedState instance, including 
-        converting any contained PackedState or PropertySheet values.
-        
-        """
-    raise NotImplementedError("Not yet implemented...")
+        converting any contained PackedState or PropertySheet values."""
+        raise NotImplementedError("Not yet implemented...")
 
 
 def isPropertySheet(val):
@@ -261,15 +262,18 @@ def isPropertySheet(val):
     property sheet, otherwise returns false."""
     return isinstance(val, PropertySheet)
 
+
 def isPackedState(val):
     """Returns true if the passed value is a 
     packed state, otherwise returns false."""
     return isinstance(val, PackedState)
 
+
 def checkBaseType(val, baseType):
     """Returns true if the passed value is a valid type for the  
     passed Base Types enumeration."""
     raise NotImplementedError("Not yet implemented...")
+
 
 def isBaseTypeList(val):
     """Returns true if the passed value is a list where all members
@@ -286,15 +290,16 @@ are valid base types."""
                 return False
             # Otherwise, it it a base type at all?.
             elif not isBaseType(v):
-                return False;
+                return False
     else:
-        return False # Not a list
+        return False  # Not a list
     
     return True
+
     
 def isBaseTypeDict(val):
     """Returns true if the passed value is a dictionary where all keys
-are strings and values are valid base types."""
+    are strings and values are valid base types."""
     # Is it a dict?
     if isDict(val):
         # Iterate.
@@ -310,7 +315,7 @@ are strings and values are valid base types."""
                 return False
             # Otherwise, it it a base type at all?.
             elif not isBaseType(v):
-                return False;
+                return False
     else:
         return False # Not a list
     
@@ -318,17 +323,17 @@ are strings and values are valid base types."""
 
 def isBaseType(val):
     """Returns true if the passed value is a valid base type,
-otherwise returns false."""
+    otherwise returns false."""
+
     # This if statement is structured this way for a reason. Look at
     # the code using it above before changing it, to make sure you
     # don't break anything or simply do something non-optimal.
     if isNone(val) or isBool(val) or isString(val) or isInt(val) or  \
-        isNum(val) or isTuple(val) or isPropertySheet(val) or \
-        isPackedState(val):
+        isNum(val) or isPropertySheet(val) or isPackedState(val):
         return True
     elif (isList(val) or isTuple(val)) and isBaseTypeList(val):
         return True
-    elif isDict(val) and isBaseTypeDict(val) 
+    elif isDict(val) and isBaseTypeDict(val):
         return True
 
     return False
