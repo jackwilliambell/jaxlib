@@ -14,6 +14,10 @@ At this time _jaxtools_ is not ready for prime time or even taking a quick look 
  
  * Get basics working with some tests and tag with version 0.1
  
- * Set up for and upload to Pypi, see: http://www.discoversdk.com/blog/how-to-create-a-new-python-module
+ * Set up for and upload to Pypi
+    - see: http://www.discoversdk.com/blog/how-to-create-a-new-python-module
+    - see: https://www.codementor.io/arpitbhayani/host-your-python-package-using-github-on-pypi-du107t7ku
+    - see: https://code.tutsplus.com/tutorials/how-to-write-package-and-distribute-a-library-in-python--cms-28693
+    - more: https://docs.python-guide.org/shipping/packaging/
  
  
