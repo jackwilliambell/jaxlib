@@ -1,5 +1,7 @@
 import unittest
+# unittest docs: https://docs.python.org/3/library/unittest.html
 
+# We import everything with * because name collisions are an error in themselves.
 from jaxtools.basetypes import *
 
 
@@ -41,9 +43,12 @@ class TestBaseTypes(unittest.TestCase):
         self.assertFalse(isBaseType(lbad2), "Simple nested list containing non basetypes is not valid base type.")
 
     def test_isBaseTypeDictComplex(self):
-        dgood = {"first": 1, "second": 2, "nested": {"isNested": [1, 2, None, {"isDeeperNested": True}]}}
-        dbad1 = {"first": 1, "second": 2, "nested": {"isNested": [1, 2, None, {1: True}]}}
-        dbad2 = {"first": 1, "second": 2, "nested": {"isNested": [1, 2, None, {"isDeeperNested": self}]}}
+        dgood = {"first": 1, "second": 2, "nested": {"isNested": True, "nested": \
+            [1, 2, None, {"isDeeperNested": True}]}}
+        dbad1 = {"first": 1, "second": 2, "nested": {"isNested": True, "nested": \
+            [1, 2, None, {1: True}]}}
+        dbad2 = {"first": 1, "second": 2, "nested": {"isNested": True, "nested": \
+            [1, 2, None, {"isDeeperNested": self}]}}
         self.assertTrue(isBaseType(dgood), "Complex nested dict containing only basetypes is valid base type.")
         self.assertFalse(isBaseType(dbad1), "Complex dict containing non-string key is not valid base type.")
         self.assertFalse(isBaseType(dbad2), "Complex nested dict containing non basetypes is not valid base type.")
