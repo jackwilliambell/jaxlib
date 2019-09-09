@@ -2,7 +2,7 @@
 
 # Requirements
 
-*jaxtools* has no external requirements by design. The code was originally created with Python 2, but most later developement used Python 3. While some portions of *jaxtools* may work with Python 2.6+, no effort has been made to make it compatible.
+*jaxtools* has no external requirements by design. Some of the code was originally created with Python 2.7, but most later developement used Python 3+. While some portions of *jaxtools* may work with Python 2.6+, no effort has been made to make it compatible.
 
 # Features
 
@@ -10,13 +10,13 @@
 
 * Concrete implementations of high-level design patterns like Command, Walker/Visitor and Object Factory
 
-* A unique (and very safe) serialization strategy allowing you to use local versions of classes when deserializing objects
+* A unique (and very safe) serialization strategy using dependency injection for readers and writers and Object Factory implementations; allowing you to use local I/O functionality and local versions of classes when deserializing objects
 
 * Support for creating command-line apps, compatible with *docopt*
     - *docopt*: http://docopt.org/
 
 * Support for creating REPLs, improving on the *cmd* module but using dependency injection for terminal control, compatible with terminal IO libraries like *curses*, *prompt*toolkit* and *urwid*
-    - *prompt*toolkit*: https://github.com/prompt-toolkit/python-prompt-toolkit
+    - *prompt_toolkit*: https://github.com/prompt-toolkit/python-prompt-toolkit
     - *urwid*: http://urwid.org/
 
 # Caveats
@@ -43,5 +43,6 @@ At this time *jaxtools* is not ready for prime time or even taking a quick look 
     - see: https://www.codementor.io/arpitbhayani/host-your-python-package-using-github-on-pypi-du107t7ku
     - see: https://code.tutsplus.com/tutorials/how-to-write-package-and-distribute-a-library-in-python--cms-28693
     - more: https://docs.python-guide.org/shipping/packaging/
+    - more: https://github.com/pypa/wheel - https://pythonwheels.com/
  
  
