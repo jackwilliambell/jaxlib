@@ -70,7 +70,7 @@ class BaseTypes(Enum):
 
 
 class PropertySheet(object):
-    """A property sheet is a string-keyed map of Base Type 
+    """A property sheet is a string-keyed map of Base Type
 values. Its 'underlying' dictionary is only accessible via the
 class methods and not as a Python map. This is intentional.
 
@@ -124,12 +124,12 @@ restricted to Base Types. See 'Base Types'."""
         self._immutable = True
 
     def isImmutable(self):
-        """Returns true if the property sheet is immutable, 
+        """Returns true if the property sheet is immutable,
         otherwise returns false."""
         return self._immutable
 
     def mergeProperties(self, properties):
-        """Merges the contents of a dictionary or property sheet 
+        """Merges the contents of a dictionary or property sheet
         into the current property sheet.
 
         NOTE: Only string-keyed base-type values are merged.
@@ -150,7 +150,7 @@ restricted to Base Types. See 'Base Types'."""
         self._properties = {}
 
     def getProperty(self, propertyKey, default=None):
-        """Returns the value of the property specified by the 
+        """Returns the value of the property specified by the
         property key. If no property exists for the key or the property
         value is 'None', the default value is returned."""
         val = None
@@ -165,15 +165,15 @@ restricted to Base Types. See 'Base Types'."""
         return val if (val != None) else default
 
     def setProperty(self, propertyKey, propertyValue, default=None):
-        """Sets the value of the property specified by the 
+        """Sets the value of the property specified by the
         property key. If the property value is the same as
         the default value, the property is cleared instead. Raises
         a ValueError exception if the property sheet is immutable.
         Raises a KeyError exception if the key is not a string."""
-        if self._immutable: 
+        if self._immutable:
             raise ValueError("Cannot set property. Property sheet is immutable.")
 
-        if not isString(propertyKey): 
+        if not isString(propertyKey):
             raise KeyError("Key must be a string.")
 
         # TODO: Make sure the equality operator does a
@@ -198,11 +198,11 @@ restricted to Base Types. See 'Base Types'."""
         del self._properties[propertyKey]
 
     def clone(self):
-        """Returns a new PropertySheet instance containing the 
-        same properties and parent as the current instance. All contained 
-        complex objects are deep-copied and contained property sheets are 
-        recursively cloned. Changes made to the new instance will not be 
-        reflected in the current instance and vice-versa. Using this method 
+        """Returns a new PropertySheet instance containing the
+        same properties and parent as the current instance. All contained
+        complex objects are deep-copied and contained property sheets are
+        recursively cloned. Changes made to the new instance will not be
+        reflected in the current instance and vice-versa. Using this method
         on deeply nested property sheets is not recommended."""
         raise NotImplementedError("Not yet implemented...")
 
@@ -231,7 +231,7 @@ class PackedState(object):
     NOTE: The state may be immutable or mutable. If it is mutable it
     can be modified by setting or clearing properties. Generally this
     is a really bad idea. Don't do it."""
-    
+
     def __init__(self, stateId, properties):
         """Sets up the new PackedState instance with the passed
         State ID and State Property Sheet."""
@@ -240,37 +240,37 @@ class PackedState(object):
             raise TypeError("The stateId argument must be a String or Unicode instance")
         if not isPropertySheet(properties):
             raise TypeError("The state argument must be a PropertySheet instance")
-            
+
         # We are good.
         self.stateId = stateId
         self.properties = properties
-        
+
     def __setattr__(self, name, value):
         if name in ("stateId", "properties"):
             raise AttributeError("Cannot set immutable attribute %s.")
-        else: 
+        else:
             super().__setattr__(name, value)
-            
+
     def toDict(self):
-        """Creates a dictionary from the PackedState instance, including 
+        """Creates a dictionary from the PackedState instance, including
         converting any contained PackedState or PropertySheet values."""
         raise NotImplementedError("Not yet implemented...")
 
 
 def isPropertySheet(val):
-    """Returns true if the passed value is a 
+    """Returns true if the passed value is a
     property sheet, otherwise returns false."""
     return isinstance(val, PropertySheet)
 
 
 def isPackedState(val):
-    """Returns true if the passed value is a 
+    """Returns true if the passed value is a
     packed state, otherwise returns false."""
     return isinstance(val, PackedState)
 
 
 def checkBaseType(val, baseType):
-    """Returns true if the passed value is a valid type for the  
+    """Returns true if the passed value is a valid type for the
     passed Base Types enumeration."""
     raise NotImplementedError("Not yet implemented...")
 
@@ -293,10 +293,10 @@ def isBaseTypeList(val):
                 return False
     else:
         return False  # Not a list.
-    
+
     return True
 
-    
+
 def isBaseTypeDict(val):
     """Returns true if the passed value is a dictionary where all keys
     are strings and values are valid base types."""
@@ -318,7 +318,7 @@ def isBaseTypeDict(val):
                 return False
     else:
         return False  # Not a dict.
-    
+
     return True
 
 
