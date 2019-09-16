@@ -94,113 +94,87 @@ Created by Jack William Bell on 2016-10-16.
 Copyright (c) 2016, 2018 Jack William Bell. License: MIT"""
 
 from jaxtools.basetypes import PropertySheet, PackedState, \
-	isPackedState, isPropertySheet
+    isPackedState, isPropertySheet
 from jaxtools.typehelpers import isNone, isBool, isString, isInt, \
     isNum, isTuple, isList, isDict
+from jaxtools.serialization import DictionaryWriter, DictionaryReader
 
 class Packable(object):
-	"""An Abstract Base Class that supports 'packing'
-	the state of an object into a PropertySheet instance.
-	It is expected that any class implementing Packable
-	will also provide a constructor argument for 'unpacking'
-	that state back into the object instance when it is
-	created; putting the object into the same state as it was
-	when the pack occurred.
+    """An Abstract Base Class that supports 'packing'
+    the state of an object into a PropertySheet instance.
+    It is expected that any class implementing Packable
+    will also provide a constructor argument for 'unpacking'
+    that state back into the object instance when it is
+    created; putting the object into the same state as it was
+    when the pack occurred.
 
-	**Description:**
+    **Description:**
 
-	The process of 'packing' is simply setting any state
-	values as named properties in a property sheet following
-	a known 'state design' that can later be unpacked by
-	any class implementing the same state design. Each state
-	design is associated with a particular State ID and
-	state designs may be versioned within a State ID.
+    The process of 'packing' is simply setting any state
+    values as named properties in a property sheet following
+    a known 'state design' that can later be unpacked by
+    any class implementing the same state design. Each state
+    design is associated with a particular State ID and
+    state designs may be versioned within a State ID.
 
-	Different classes may support the same State ID, so long
-	as they also support the same state design and interface;
-	meaning they are interchangable and runtime Polymorphic. For
-	classes that might be dangerous if unpacked using states from
-	unknown sources it is generally a good idea to provide a
-	safe version of the Packable object to use. See PackableFactory
-	class."""
+    Different classes may support the same State ID, so long
+    as they also support the same state design and interface;
+    meaning they are interchangable and runtime Polymorphic. For
+    classes that might be dangerous if unpacked using states from
+    unknown sources it is generally a good idea to provide a
+    safe version of the Packable object to use. See PackableFactory
+    class."""
 
-	def getStateId(self):
-		"""Implementations must return the State ID associated
-		with the Packable object's state design and interface."""
-		raise NotImplementedError("Abstract method, must be implemented if subclass supports it..")
+    def getStateId(self):
+        """Implementations must return the State ID associated
+        with the Packable object's state design and interface."""
+        raise NotImplementedError("Abstract method, must be implemented if subclass supports it..")
 
-	def pack(self, properties, hints):
-		"""Implementations must load the passed property sheet with
-		the current state of the instance, following a state design
-		associated with the State ID. To reduce state size, make
-		sure to use default values when setting properties. Hints
-		may be used to affect how the packing is done or may be
-		ignored."""
-		raise NotImplementedError("Abstract method, must be implemented if subclass supports it..")
+    def pack(self, properties, hints):
+        """Implementations must load the passed property sheet with
+        the current state of the instance, following a state design
+        associated with the State ID. To reduce state size, make
+        sure to use default values when setting properties. Hints
+        may be used to affect how the packing is done or may be
+        ignored."""
+        raise NotImplementedError("Abstract method, must be implemented if subclass supports it..")
 
-	def unpack(self, properties, hints):
-		"""Implementations must set the current state of the instance
-		from the passed property sheet, following a state design
-		associated with the State ID. To reduce state size, make
-		sure to use default values when getting properties. Hints
-		may be used to affect how the unåpacking is done or may be
-		ignored."""
-		raise NotImplementedError("Abstract method, must be implemented if subclass supports it..")
+    def unpack(self, properties, hints):
+        """Implementations must set the current state of the instance
+        from the passed property sheet, following a state design
+        associated with the State ID. To reduce state size, make
+        sure to use default values when getting properties. Hints
+        may be used to affect how the unåpacking is done or may be
+        ignored."""
+        raise NotImplementedError("Abstract method, must be implemented if subclass supports it..")
 
 
 class PackableFactory(object):
-	"""An abstract Base Class that supports creating new
-	instances of packable objects from a Packed State. These
-	instances do not have to be of the same class as was
-	packed so long as they support the same state format.
-	PackableFactory implementations may be 'chained' using a
-	parent factory such that if the current factory doesn't
-	support the State ID of the Packed State, the parent may
-	be invoked. If the parent does not supports the State ID
-	it may invoke its parent, and so on.
+    """An abstract Base Class that supports creating new
+    instances of packable objects from a Packed State. These
+    instances do not have to be of the same class as was
+    packed so long as they support the same state format.
+    PackableFactory implementations may be 'chained' using a
+    parent factory such that if the current factory doesn't
+    support the State ID of the Packed State, the parent may
+    be invoked. If the parent does not supports the State ID
+    it may invoke its parent, and so on.
 
-	To create a PackableFactory, implement the makeObject()
-	method to create an object instance based on the state ID."""
+    To create a PackableFactory, implement the makeObject()
+    method to create an object instance based on the state ID."""
 
-	def makeObject(self, stateId, hints):
-		"""Creates a clean instance of a packable object for
-		the passed state ID, optionally using the hints."""
-		raise NotImplementedError("Abstract method, must be implemented if subclass supports it.")
+    def makeObject(self, stateId, hints):
+        """Creates a clean instance of a packable object for
+        the passed state ID, optionally using the hints."""
+        raise NotImplementedError("Abstract method, must be implemented if subclass supports it.")
 
-	def makePackable(self, stateId, properties, hints):
-		"""Creates a restored instance of a packable object
-		from the passed packed state and hints."""
-		obj = self.makeObject(stateId, hints)
-		obj.unpack(properties, hints)
-		return obj
+    def makePackable(self, stateId, properties, hints):
+        """Creates a restored instance of a packable object
+        from the passed packed state and hints."""
+        obj = self.makeObject(stateId, hints)
+        obj.unpack(properties, hints)
+        return obj
 
-
-class DictionaryWriter(object):
-	"""An abstract Base Class that supports creating writing the contents of
-	a dictionary out to some external destination. The destination can be a
-	string, a buffer, a file, a network connection; anything you can serialize
-	the property sheet to.
-
-	The implementations determine (a) how the data is converted to
-	serializable form and (b) how the data is written."""
-
-	def writeProperties(self, dict):
-		"""Writes the passed property sheet out as implemented."""
-		raise NotImplementedError("Abstract method, must be implemented if subclass supports it.")
-
-
-class DictionaryReader(object):
-	"""An abstract Base Class that supports reading and recreating a
-	dictionary from an external source. The source can be a string,
-	a buffer, a file, a network connection; anything you can deserialize a
-	dictionary from.
-
-	The implementations determine (a) how the data is converted from
-	serializable form and (b) how the data is read."""
-
-	def readProperties(self):
-		"""Reads and returns a property sheet, as implemented."""
-		raise NotImplementedError("Abstract method, must be implemented if subclass supports it.")
 
 
 ##
@@ -208,61 +182,65 @@ class DictionaryReader(object):
 ##
 
 def packIt(packable, hints, overrideStateId=None):
-	"""Helper function that packs a packable object using the
-	passed class ID and hints. Returns a packed state containing the
-	object state.
+    """Helper function that packs a packable object using the
+    passed class ID and hints. Returns a packed state containing the
+    object state.
 
-	**Parameters:**
+    **Parameters:**
 
-	* packable - packable object to pack
+    * packable - packable object to pack
 
-	* hints - Dictionary of hint values giving extra information to the
-	packable object to use when packing
+    * hints - Dictionary of hint values giving extra information to the
+    packable object to use when packing
 
-	* overrideStateId - Optional state ID to use instead of the one
-	provided by the packable object
+    * overrideStateId - Optional state ID to use instead of the one
+    provided by the packable object
 
-	**Returns:**
+    **Returns:**
 
-	A packed state instance representing the current state of the packable
-	object."""
-	stateId = overrideStateId if overrideStateId else packable.getStateId()
-	assert (isString(stateId)), "State Id must be a string."
-	props = PropertySheet(immutable=False)
-	packable.pack(props, hints)
-	props.forceImmutable()
-	return PackedState(stateId, props)
+    A packed state instance representing the current state of the packable
+    object."""
+    stateId = overrideStateId if overrideStateId else packable.getStateId()
+    assert (isString(stateId)), "State Id must be a string."
+    props = PropertySheet(immutable=False)
+    packable.pack(props, hints)
+    props.forceImmutable()
+    return PackedState(stateId, props)
 
 
 def unpackIt(factory, state, hints, overrideStateId=None):
-	"""Helper function that unpacks a packable object using
-	the passed factory, packed state and hints. Returns the unpacked
-	object.
+    """Helper function that unpacks a packable object using
+    the passed factory, packed state and hints. Returns the unpacked
+    object.
 
-	**Parameters:**
+    **Parameters:**
 
-	* factory - PackableFactory implementation to make the new object
+    * factory - PackableFactory implementation to make the new object
 
-	* state - PackedState containing the object's state
+    * state - PackedState containing the object's state
 
-	* hints - Dictionary of hint values giving extra information to the
-	factory or packable object to use when unpacking
+    * hints - Dictionary of hint values giving extra information to the
+    factory or packable object to use when unpacking
 
-	* overrideStateId - Optional state ID to use instead of the one in
-	the state.
+    * overrideStateId - Optional state ID to use instead of the one in
+    the state.
 
-	**Returns:**
+    **Returns:**
 
-	The unpacked object instance or None if the factory doesn't support
-	the State ID."""
-	assert (isPackedState(state)), "State must be a PackedState instance."
-	stateId = overrideStateId if overrideStateId else state.stateId()
-	assert (isString(stateId)), "State Id must be a string."
-	factory.makePackable(stateId, state.properties, hints)
+    The unpacked object instance or None if the factory doesn't support
+    the State ID."""
+    assert (isPackedState(state)), "State must be a PackedState instance."
+    stateId = overrideStateId if overrideStateId else state.stateId()
+    assert (isString(stateId)), "State Id must be a string."
+    factory.makePackable(stateId, state.properties, hints)
 
 
-def serializeIt(writer, factory, state, hints, overrideStateId=None):
-	""""""
+def serializeState(dictionaryWriter, state, hints, overrideStateId=None):
+    """"""
+    raise NotImplementedError("Abstract method, must be implemented if subclass supports it.")
 
-def deserializeIt(reader, factory, state, hints, overrideStateId=None):
-	""""""
+
+def deserializeState(dictionaryReader, hints, overrideStateId=None):
+    """"""
+    raise NotImplementedError("Abstract method, must be implemented if subclass supports it.")
+

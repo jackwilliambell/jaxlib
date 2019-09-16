@@ -1,16 +1,17 @@
-"""basetypes.py
-
-Copyright (c) 2018, 2019 Jack William Bell. License: MIT
+"""# Base Types
 
 Base types are a set of basic data types that
 are easy to serialize and are either a standard 
 type of nearly every programming languge or are
 easy to implement/emulate if not.
 
-Base types include low-level types like boolean and 
-int, along with a set of common data structures and
-a type you can use to specify the serialized state of  
-more complex objects. See 'packables'.
+Base types include low-level value types like boolean and
+int along with a storage types like string and blob, a
+set of common data structures like list and dictionary,
+and a type you can use to specify and contain the
+serialized state of more complex objects. See 'packables'.
+
+## List of base types
 
 These types and their Python representations are:
 
@@ -22,28 +23,118 @@ These types and their Python representations are:
 
 * float - types.FloatType
 
-* date - datetime.datetime
+* datetime - datetime.datetime
 
 * string - types.StringType, types.UnicodeType
 
-* url - urllib.request.Request
+* urn - urllib.request.Request
 
 * blob - types.BufferType
 
-* list - types.ListType (list members must be base 
-types, types.TupleType supported by converting to
-a list)
+* list - types.ListType (list members must be base types,
+types.TupleType supported by converting to a list)
 
 * dictionary - types.DictType (dictionary keys must be strings
 and values must be base types)
 
-* propertysheet - jaxtools.basetypes.PropertySheet (any dictionary 
-using string keys may be converted to a property sheet and vice 
+* propertysheet - jaxtools.basetypes.PropertySheet (any base type
+dictionary may be converted to a property sheet and vice
 versa)
 
-* packedstate - jaxtools.basetypes.PackedState
+* packedstate - jaxtools.basetypes.PackedState (may be converted to
+a base type dictionary with predefined string keys and vice versa)
+
+## Goals
+
+* Restrict data values to a small, but comprehensive, set of known
+types; where the types are easy to serialize and are either a standard
+type of nearly every programming languge or are easy to
+implement/emulate if not
+
+* Provide a predictable machine and language-independent way to store
+data and to transfer data between applications
+
+* Provide a predictable machine and language-independent way to ensure
+data interchange by serializing to and deserializing from common wire
+data transfer formats such as JSON and YAML or even HTTP MIME types
+such as 'multipart/form-data'
+
+* Provide a predictable machine and language-independent way to
+represent the state of common objects; IE objects with similar state
+and implementations, but not using the same classes or even the same
+programming language (See 'packables')
+
+## Non-goals
+
+* Base types are not meant for general computation, so usages other
+than data storage or data interchange may be non-optimal; especially
+for collection types
+
+* No attempt is made to optimize for processing speed or memory and
+some base type APIs may be particuarily slow when used with large or
+deeply nested collections (See isBaseType() and the to/from dictionary
+methods of propertysheet and packedstate)
+
+## Value base types
+
+The set of base types includes five value types: null, bool, int,
+float, and date. All value types may be represented in memory with
+a known byte size, making their memory requirements predictable.
+
+In general all value types will work the same for all APIs and
+when transferred to another base type software implementation.
+
+## Storage base types
+
+The set of base types includes three storage types: string, url, and
+blob. Storage types contain zero to N bytes and their memory
+requirements are not predictable.
+
+While there is no design limit to the upper size of storage types, in
+practice the total number of bytes you can store in each storage type
+is determined by the programming language and the implementation of the
+type. Moreover, particularity large storage types may fail to work
+properly or cause exceptions when passed to some APIs or when
+transferred to another base type software implementation.
+
+In general it is best to avoid very large byte sizes in storage types
+if possible and to test carefully if not. As a rule of thumb, storage
+types with less than 256K total bytes are probably fine while storage
+types which exceed that limit may be problematic.
+
+(NOTE: Python strings on a 64-bit machines may use hundreds of gigabytes
+of memory, but that does not mean APIs you pass them to will work properly.)
+
+## Collection base types
+
+The set of base types include four collection types: list, dictionary,
+propertysheet, and packstate. Of these, list and dictionary are
+'classic' collection types while propertysheet and packstate are
+special cases of the base type dictionary and can be converted
+to and from base type dictionaries. For the purposes of discussing
+collections in base types we will consider propertysheet and
+packstate to be dictionaries.
+
+By their nature, collection base type memory requirements are not
+predictable. Moreover, base type collections can be nested. Dictionaries
+can contain lists and dictionaries as values and lists can contain lists
+and dictionaries as list members. While there is no design limit to this
+nesting, in practice deeply nested collections may fail to work properly
+or cause exceptions when passed to some APIs or when transferred to
+another base type software implementation.
+
+Particularity large collections, with or without nesting, may also fail
+to work properly or cause exceptions when passed to some APIs. Also, large
+value types as collection members, such as very large strings or blobs, may
+cause problems as well.
+
+In general it is best to avoid large and/or deeply nested collections if
+possible and to test carefully if not. As a rule of thumb, collections with
+less than 1K members or 8 deep nesting are probably fine while collections
+which exceed those limits may be problematic.
 
 Created by Jack William Bell on 2016-10-16.
+
 Copyright (c) 2016, 2018 Jack William Bell. License: MIT"""
 
 from enum import Enum
@@ -107,7 +198,7 @@ TODO: Add schema validation. (JWB)
 Property sheet keys are strings. Property sheet values are
 restricted to Base Types. See 'Base Types'."""
 
-    def __init__(self, parent=None, properties=None, immutable=False):
+    def __init__(self, parent=None, properties=None, immutable=False, safeCopy=True):
         """Initializes a new instance of the PropertySheet class,
         optionally with a parent and/or initial properties."""
         self._parent = parent
@@ -118,6 +209,18 @@ restricted to Base Types. See 'Base Types'."""
 
         if properties:
             self.mergeProperties(properties)
+
+    @staticmethod
+    def toDictionary(propertysheet, safeCopy=True):
+        """Creates a dictionary from the passed property sheet,
+        data is deep-copied."""
+        raise NotImplementedError("Not yet implemented...")
+
+    @staticmethod
+    def fromDictionary(dictionary, safeCopy=True):
+        """Creates a property sheet from the passed dictionary,
+        data is deep-copied."""
+        raise NotImplementedError("Not yet implemented...")
 
     def forceImmutable(self):
         """Forces the property sheet to be immutable."""
@@ -134,6 +237,9 @@ restricted to Base Types. See 'Base Types'."""
 
         NOTE: Only string-keyed base-type values are merged.
         Invalid values are ignored."""
+        if self._immutable:
+            raise ValueError("Cannot merge properties. Property sheet is immutable.")
+
         if isDict(properties):
             # TODO: Consider reworking this as a comprehension for
             # better performance. OTOH, this is easy to read. (JWB)
@@ -147,6 +253,9 @@ restricted to Base Types. See 'Base Types'."""
 
     def clearSheet(self):
         """Clears all properties in the sheet."""
+        if self._immutable:
+            raise ValueError("Cannot clear sheet. Property sheet is immutable.")
+
         self._properties = {}
 
     def getProperty(self, propertyKey, default=None):
@@ -195,9 +304,12 @@ restricted to Base Types. See 'Base Types'."""
 
     def clearProperty(self, propertyKey):
         """Removes the key from the property sheet."""
+        if self._immutable:
+            raise ValueError("Cannot clear property. Property sheet is immutable.")
+
         del self._properties[propertyKey]
 
-    def clone(self):
+    def clone(self, safeCopy=True):
         """Returns a new PropertySheet instance containing the
         same properties and parent as the current instance. All contained
         complex objects are deep-copied and contained property sheets are
@@ -232,7 +344,7 @@ class PackedState(object):
     can be modified by setting or clearing properties. Generally this
     is a really bad idea. Don't do it."""
 
-    def __init__(self, stateId, properties):
+    def __init__(self, stateId, properties, safeCopy=True):
         """Sets up the new PackedState instance with the passed
         State ID and State Property Sheet."""
         # Verify types.
@@ -251,9 +363,16 @@ class PackedState(object):
         else:
             super().__setattr__(name, value)
 
-    def toDict(self):
-        """Creates a dictionary from the PackedState instance, including
-        converting any contained PackedState or PropertySheet values."""
+    @staticmethod
+    def toDictionary(packedstate, safeCopy=True):
+        """Creates a dictionary from the passed packed state,
+        data is deep-copied."""
+        raise NotImplementedError("Not yet implemented...")
+
+    @staticmethod
+    def fromDictionary(dictionary, safeCopy=True):
+        """Creates a packed state from the passed dictionary,
+        data is deep-copied."""
         raise NotImplementedError("Not yet implemented...")
 
 
@@ -269,7 +388,7 @@ def isPackedState(val):
     return isinstance(val, PackedState)
 
 
-def checkBaseType(val, baseType):
+def checkBaseType(val, baseTypeEnum):
     """Returns true if the passed value is a valid type for the
     passed Base Types enumeration."""
     raise NotImplementedError("Not yet implemented...")
@@ -339,3 +458,34 @@ def isBaseType(val):
         return True
 
     return False
+
+def convertToBaseType(val, safeCopy=True):
+    """Converts the passed value to a matching base type, if possible.
+    Throws an exception if the value cannot be converted. Always returns
+    a copy of the value, including for storage and collection types.
+
+    Uses the following strategies:
+
+    * For value types it simply returns a copy of the value converted to
+    the closest matching base type (may be the exact same value)
+
+    * For storage types the following is performed:
+        - If the value is a string and the string contains an ISO 8601
+        formatted date value, the string is converted to a datetime
+        - If the value is a string and the string contains a URN in
+        RFC 1737/RFC 2141 format, the string is converted to a urn
+        - TODO: Determine how blobs are converted, consider making
+            the blob base type a bytearray
+        - TODO: Consider if there any standard types that could be
+            converted to strings or blobs
+
+    * For collection types the following is performed:
+        - If the value is a propertysheet or a packedstate, the value
+        is cloned
+        - If the value is a dictionary or a list it is recursively
+        iterated and every value/list member is converted appropriately
+        - If the value is a dictionary containing the special keys
+        for a propertysheet or a packedstate it is converted to
+        a propertysheet or a packedstate, as appropriate
+    """
+    raise NotImplementedError("Not yet implemented...")
