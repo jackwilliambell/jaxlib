@@ -102,7 +102,7 @@ if possible and to test carefully if not. As a rule of thumb, storage
 types with less than 256K total bytes are probably fine while storage
 types which exceed that limit may be problematic.
 
-(NOTE: Python strings on a 64-bit machines may use hundreds of gigabytes
+(NOTE: Python strings on a 64-bit machine may use hundreds of gigabytes
 of memory, but that does not mean APIs you pass them to will work properly.)
 
 ## Collection base types
@@ -185,7 +185,10 @@ contain the specified key. The parent sheet must be
 supplied at instance creation, but may be 'None' if the
 sheet has no parent. This allows for upward chaining
 of properties if the sheet your are accessing does not
-contain a property with that key.
+contain a property with that key. By the same token, if
+the sheet has a property with the same key as a property
+in the parent, the sheet's property value overrides the
+parent's property value.
 
 NOTE: Property sheets cannot be iterated nor can you get
 a list of the keys. However, the toDict() method returns
@@ -242,8 +245,14 @@ restricted to Base Types. See 'Base Types'."""
 
         if isDict(properties):
             # TODO: Consider reworking this as a comprehension for
-            # better performance. OTOH, this is easy to read. (JWB)
+            #   better performance. OTOH, this is easy to read. (JWB)
             for k in properties.keys():
+                # TODO: THis copies, not clones. Probably should clone storage and
+                #  collection types for safety. Might be good to have a re-usable
+                #  library function for that. Also note: some types (strings) are
+                #  immutable and others (property bags) can be immutable, so there's
+                #  no safety reason to clone them and there is the extra cost. Think
+                #  on this.
                 if isString(k) and isBaseType(properties[k]):
                     self._properties[k] = properties[k]
         elif isinstance(properties, PropertySheet):
@@ -286,7 +295,7 @@ restricted to Base Types. See 'Base Types'."""
             raise KeyError("Key must be a string.")
 
         # TODO: Make sure the equality operator does a
-        # deep test for complex types. (JWB)
+        #  deep test for complex types. (JWB)
         if (propertyValue == default):
             self.clearProperty(propertyKey)
         else:
@@ -297,7 +306,7 @@ restricted to Base Types. See 'Base Types'."""
                 pass
 
             # TODO: Make sure the equality operator does a
-            # deep test for complex types. (JWB)
+            #  deep test for complex types. (JWB)
             if val != propertyValue:
                 # TODO: Check value type. (JWB)
                 self._properties[propertyKey] = propertyValue
@@ -462,10 +471,12 @@ def isBaseType(val):
 # TODO: Consider adding callback function params to the following conversion
 #  functions for converting datetime and urn. Maybe for all type?
 
-# TODO: Consider if this should use a callback strategy instead; as currently
-#   designed it will consume a lot of memory and CPU for deeply nested collection
-#   types. Using a callback converter as part of serialization lets you reduce
+# TODO: As currently designed it consumes a lot of memory and CPU for deeply nested collection
+#   types. Refactor to use a evented callback converter, similar to a SAX style parser,
+#   and a similar writer strategy for deserializaton/serialization lets you reduce
 #   the overhead to performing them one at a time. Think this through carefully.
+#   https://en.wikipedia.org/wiki/Simple_API_for_XML
+#   https://rapidjson.org/md_doc_sax.html
 
 def convertToBaseType(val, safeCopy=True):
     """Converts the passed value to a matching base type, if possible.
