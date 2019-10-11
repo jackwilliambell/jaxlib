@@ -459,10 +459,19 @@ def isBaseType(val):
 
     return False
 
+# TODO: Consider adding callback function params to the following conversion
+#  functions for converting datetime and urn. Maybe for all type?
+
+# TODO: Consider if this should use a callback strategy instead; as currently
+#   designed it will consume a lot of memory and CPU for deeply nested collection
+#   types. Using a callback converter as part of serialization lets you reduce
+#   the overhead to performing them one at a time. Think this through carefully.
+
 def convertToBaseType(val, safeCopy=True):
     """Converts the passed value to a matching base type, if possible.
     Throws an exception if the value cannot be converted. Always returns
-    a copy of the value, including for storage and collection types.
+    a copy of the value, including for storage and collection types, even
+    when the value is already a base type.
 
     Uses the following strategies:
 
@@ -483,9 +492,37 @@ def convertToBaseType(val, safeCopy=True):
         - If the value is a propertysheet or a packedstate, the value
         is cloned
         - If the value is a dictionary or a list it is recursively
-        iterated and every value/list member is converted appropriately
+        iterated and copied and every value/list member is converted
+        appropriately
         - If the value is a dictionary containing the special keys
         for a propertysheet or a packedstate it is converted to
         a propertysheet or a packedstate, as appropriate
+    """
+    raise NotImplementedError("Not yet implemented...")
+
+def convertToSerializableType(val, safeCopy=True):
+    """Converts the passed base type value to a serializeable type, if possible.
+    Throws an exception if the value cannot be converted. Always returns
+    a copy of the value, including for storage and collection types, even
+    when the value is already serializable.
+
+    Uses the following strategies:
+
+    * For value types it simply returns a copy of the value, except:
+        - datetime is converted to a string in ISO 8601 format
+
+    * For storage types the following is performed:
+        - If the value is a URN it is converted into a string in
+        RFC 1737/RFC 2141 format
+        - TODO: Determine how blobs are converted
+        - Strings are simply copied
+
+    * For collection types the following is performed:
+        - If the value is a propertysheet or a packedstate, the value
+        is converted to a dictionary and the dictionary is recursively
+        made serializable as below
+        - If the value is a dictionary or a list it is recursively
+        iterated and copied and every value/list member is converted
+        appropriately
     """
     raise NotImplementedError("Not yet implemented...")
