@@ -8,12 +8,12 @@ easy to implement/emulate if not.
 Base types include low-level value types like boolean and
 int along with a storage types like string and blob, a
 set of common data structures like list and dictionary,
-and a type you can use to specify and contain the
-serialized state of more complex objects. See 'packables'.
+and the Packable type, which more complex objects can inherit
+from to support easy serialization/deserialization.
 
 ## List of base types
 
-These types and their Python representations are:
+These types, their tags, and their Python representations are:
 
 * null - types.NoneType
 
@@ -29,20 +29,19 @@ These types and their Python representations are:
 
 * urn - urllib.request.Request
 
+* TODO: Add 'tag' type with a name, date, other? See user-defined tags as used in YAML.
+
 * blob - types.BufferType
 
-* list - types.ListType (list members must be base types,
+* list - types.ListType (except list members must be base types,
 types.TupleType supported by converting to a list)
 
-* dictionary - types.DictType (dictionary keys must be strings
+* dictionary - types.DictType (except dictionary keys must be strings
 and values must be base types)
 
-* propertysheet - jaxtools.basetypes.PropertySheet (any base type
-dictionary may be converted to a property sheet and vice
-versa)
+* property jaxtools.basetypes.Property.
 
-* packedstate - jaxtools.basetypes.PackedState (may be converted to
-a base type dictionary with predefined string keys and vice versa)
+* packable - jaxtools.basetypes.Packable
 
 ## Goals
 
@@ -107,14 +106,7 @@ of memory, but that does not mean APIs you pass them to will work properly.)
 
 ## Collection base types
 
-The set of base types include four collection types: list, dictionary,
-propertysheet, and packstate. Of these, list and dictionary are
-'classic' collection types while propertysheet and packstate are
-special cases of the base type dictionary and can be converted
-to and from base type dictionaries. For the purposes of discussing
-collections in base types we will consider propertysheet and
-packstate to be dictionaries.
-
+The set of base types include two collection types: list and dictionary.
 By their nature, collection base type memory requirements are not
 predictable. Moreover, base type collections can be nested. Dictionaries
 can contain lists and dictionaries as values and lists can contain lists
@@ -133,6 +125,11 @@ possible and to test carefully if not. As a rule of thumb, collections with
 less than 1K members or 8 deep nesting are probably fine while collections
 which exceed those limits may be problematic.
 
+## Object base types
+
+The set of base types includes two object types: property and packable.
+TODO: Document
+
 Created by Jack William Bell on 2016-10-16.
 
 Copyright (c) 2016, 2018 Jack William Bell. License: MIT"""
@@ -140,8 +137,11 @@ Copyright (c) 2016, 2018 Jack William Bell. License: MIT"""
 from enum import Enum
 
 from jaxtools.typehelpers import isNone, isBool, isString, isInt, \
-    isNum, isTuple, isList, isDict
+    isNum, isTuple, isList, isDict, isFunction
 
+##
+## Base Type Enumeration.
+##
 
 class BaseTypes(Enum):
     """Enumeration of the base type IDs."""
@@ -155,247 +155,12 @@ class BaseTypes(Enum):
     BLOB = 24
     LIST = 25
     DICTIONARY = 26
-    PROPERTYSHEET = 32
-    PACKEDSTATE = 33
+    PACKABLE = 32
     UNKNOWN = 255
 
-
-class PropertySheet(object):
-    """A property sheet is a string-keyed map of Base Type
-values. Its 'underlying' dictionary is only accessible via the
-class methods and not as a Python map. This is intentional.
-
-The class methods allow you to perform various operations 
-on the the properties in sheets. But only via mutating the 
-property values using merge and get/set/clear semantics,
-where your code provides a property key and a default value 
-(where applicable).
-
-Conceptually this class provides a 'property bag'. It only
-stores non-default property values and returns a default value
-if the property does not exist in the bag. It provides 
-no way to get a list of the keys or values; if you don't 
-know what you want from it or what the default value for
-that thing should be, this isn't the right data structure 
-for you.    
-
-NOTE: Get operations provide read-only access to a 
-parent property sheet when the current instance does not 
-contain the specified key. The parent sheet must be 
-supplied at instance creation, but may be 'None' if the
-sheet has no parent. This allows for upward chaining
-of properties if the sheet your are accessing does not
-contain a property with that key. By the same token, if
-the sheet has a property with the same key as a property
-in the parent, the sheet's property value overrides the
-parent's property value.
-
-NOTE: Property sheets cannot be iterated nor can you get
-a list of the keys. However, the toDict() method returns
-a copy of the property sheet in the form of a Python
-dictionary, which you can iterate. This is not a 
-recommended use case.
-
-TODO: Add schema validation. (JWB)
-
-Property sheet keys are strings. Property sheet values are
-restricted to Base Types. See 'Base Types'."""
-
-    def __init__(self, parent=None, properties=None, immutable=False, safeCopy=True):
-        """Initializes a new instance of the PropertySheet class,
-        optionally with a parent and/or initial properties."""
-        self._parent = parent
-
-        self._immutable = immutable
-
-        self.clearSheet()
-
-        if properties:
-            self.mergeProperties(properties)
-
-    @staticmethod
-    def toDictionary(propertysheet, safeCopy=True):
-        """Creates a dictionary from the passed property sheet,
-        data is deep-copied."""
-        raise NotImplementedError("Not yet implemented...")
-
-    @staticmethod
-    def fromDictionary(dictionary, safeCopy=True):
-        """Creates a property sheet from the passed dictionary,
-        data is deep-copied."""
-        raise NotImplementedError("Not yet implemented...")
-
-    def forceImmutable(self):
-        """Forces the property sheet to be immutable."""
-        self._immutable = True
-
-    def isImmutable(self):
-        """Returns true if the property sheet is immutable,
-        otherwise returns false."""
-        return self._immutable
-
-    def mergeProperties(self, properties):
-        """Merges the contents of a dictionary or property sheet
-        into the current property sheet.
-
-        NOTE: Only string-keyed base-type values are merged.
-        Invalid values are ignored."""
-        if self._immutable:
-            raise ValueError("Cannot merge properties. Property sheet is immutable.")
-
-        if isDict(properties):
-            # TODO: Consider reworking this as a comprehension for
-            #   better performance. OTOH, this is easy to read. (JWB)
-            for k in properties.keys():
-                # TODO: THis copies, not clones. Probably should clone storage and
-                #  collection types for safety. Might be good to have a re-usable
-                #  library function for that. Also note: some types (strings) are
-                #  immutable and others (property bags) can be immutable, so there's
-                #  no safety reason to clone them and there is the extra cost. Think
-                #  on this.
-                if isString(k) and isBaseType(properties[k]):
-                    self._properties[k] = properties[k]
-        elif isinstance(properties, PropertySheet):
-            self.mergeProperties(properties._properties)
-        else:
-            raise TypeError("'properties' argument must be a PropertySheet or a dictionary.")
-
-    def clearSheet(self):
-        """Clears all properties in the sheet."""
-        if self._immutable:
-            raise ValueError("Cannot clear sheet. Property sheet is immutable.")
-
-        self._properties = {}
-
-    def getProperty(self, propertyKey, default=None):
-        """Returns the value of the property specified by the
-        property key. If no property exists for the key or the property
-        value is 'None', the default value is returned."""
-        val = None
-        try:
-            val = self._properties[propertyKey]
-        except KeyError:
-            pass
-
-        if val == None and self._parent != None:
-            val = self._parent.getProperty(propertyKey, default)
-
-        return val if (val != None) else default
-
-    def setProperty(self, propertyKey, propertyValue, default=None):
-        """Sets the value of the property specified by the
-        property key. If the property value is the same as
-        the default value, the property is cleared instead. Raises
-        a ValueError exception if the property sheet is immutable.
-        Raises a KeyError exception if the key is not a string."""
-        if self._immutable:
-            raise ValueError("Cannot set property. Property sheet is immutable.")
-
-        if not isString(propertyKey):
-            raise KeyError("Key must be a string.")
-
-        # TODO: Make sure the equality operator does a
-        #  deep test for complex types. (JWB)
-        if (propertyValue == default):
-            self.clearProperty(propertyKey)
-        else:
-            val = None
-            try:
-                val = self._properties[propertyKey]
-            except KeyError:
-                pass
-
-            # TODO: Make sure the equality operator does a
-            #  deep test for complex types. (JWB)
-            if val != propertyValue:
-                # TODO: Check value type. (JWB)
-                self._properties[propertyKey] = propertyValue
-
-    def clearProperty(self, propertyKey):
-        """Removes the key from the property sheet."""
-        if self._immutable:
-            raise ValueError("Cannot clear property. Property sheet is immutable.")
-
-        del self._properties[propertyKey]
-
-    def clone(self, safeCopy=True):
-        """Returns a new PropertySheet instance containing the
-        same properties and parent as the current instance. All contained
-        complex objects are deep-copied and contained property sheets are
-        recursively cloned. Changes made to the new instance will not be
-        reflected in the current instance and vice-versa. Using this method
-        on deeply nested property sheets is not recommended."""
-        raise NotImplementedError("Not yet implemented...")
-
-
-class PackedState(object):
-    """Represents the state of a Packable object. Can be 'unpacked'
-    to a new object using any class that supports the same state
-    format design. How it is unpacked is implementation dependent.
-    See Packables for more details.
-
-    **Description:**
-
-    Provides two public attributes:
-
-    * stateId - A string value uniquely specifying the state design
-    and interface of the packed object; should be a URL linking the
-    class and state specification, but can be any string (if not a
-    URL it is recommended you use Java-style namespaced class names)
-
-    * properties - A property sheet or Dictionary containing the
-    packed object's state
-
-    NOTE: These attributes are read only. Attempting to set them
-    will raise an exception.
-
-    NOTE: The state may be immutable or mutable. If it is mutable it
-    can be modified by setting or clearing properties. Generally this
-    is a really bad idea. Don't do it."""
-
-    def __init__(self, stateId, properties, safeCopy=True):
-        """Sets up the new PackedState instance with the passed
-        State ID and State Property Sheet."""
-        # Verify types.
-        if not isString(stateId):
-            raise TypeError("The stateId argument must be a String or Unicode instance")
-        if not isPropertySheet(properties):
-            raise TypeError("The state argument must be a PropertySheet instance")
-
-        # We are good.
-        self.stateId = stateId
-        self.properties = properties
-
-    def __setattr__(self, name, value):
-        if name in ("stateId", "properties"):
-            raise AttributeError("Cannot set immutable attribute %s.")
-        else:
-            super().__setattr__(name, value)
-
-    @staticmethod
-    def toDictionary(packedstate, safeCopy=True):
-        """Creates a dictionary from the passed packed state,
-        data is deep-copied."""
-        raise NotImplementedError("Not yet implemented...")
-
-    @staticmethod
-    def fromDictionary(dictionary, safeCopy=True):
-        """Creates a packed state from the passed dictionary,
-        data is deep-copied."""
-        raise NotImplementedError("Not yet implemented...")
-
-
-def isPropertySheet(val):
-    """Returns true if the passed value is a
-    property sheet, otherwise returns false."""
-    return isinstance(val, PropertySheet)
-
-
-def isPackedState(val):
-    """Returns true if the passed value is a
-    packed state, otherwise returns false."""
-    return isinstance(val, PackedState)
-
+##
+## Helper functions.
+##
 
 def checkBaseType(val, baseTypeEnum):
     """Returns true if the passed value is a valid type for the
@@ -450,6 +215,12 @@ def isBaseTypeDict(val):
     return True
 
 
+def isPackable(val):
+    """Returns true if the passed value is a
+    packed state, otherwise returns false."""
+    return isinstance(val, Packable)
+
+
 def isBaseType(val):
     """Returns true if the passed value is a valid base type,
     otherwise returns false."""
@@ -458,7 +229,7 @@ def isBaseType(val):
     # the code using it above before changing it, to make sure you
     # don't break anything or simply do something non-optimal.
     if isNone(val) or isBool(val) or isString(val) or isInt(val) or  \
-        isNum(val) or isPropertySheet(val) or isPackedState(val):
+        isNum(val) or isPackable(val):
         # TODO: Add date, url, and blob checks
         return True
     elif (isList(val) or isTuple(val)) and isBaseTypeList(val):
@@ -468,8 +239,162 @@ def isBaseType(val):
 
     return False
 
-# TODO: Consider adding callback function params to the following conversion
-#  functions for converting datetime and urn. Maybe for all type?
+
+##
+## Properties and Packables implementation.
+##
+
+class PropertyMeta(object):
+    """"""
+    def __init__(self, name, type, validator=checkBaseType):
+        if not isString(name):
+            raise TypeError("'name' is not a valid type.")
+        if not isinstance(type, BaseTypes):
+            raise TypeError("'type' is not a BaseType enum value.")
+        if not isFunction(validator):
+            raise TypeError("'validator' is not a valid type.")
+
+        self._name = name
+        self._type = type
+        self._validator = validator
+
+    def getName(self):
+        """"""
+        return self._name
+
+    def getType(self):
+        """"""
+        return self._type
+
+    def validate(self, value):
+        """"""
+        return self._validator(value, self._type)
+
+
+# TODO: Design. This is basically a set of uniquely named PropertyMeta objects. Consider
+#       if it should also have other attributes, like a schema ID tag and hints.
+class PropertySchema(object):
+    """"""
+
+
+# TODO: Consider if this should allow you to set an immutable flag.
+class Property(object):
+    """"""
+    def __init__(self, value, propertyMeta=None):
+        if not isinstance(propertyMeta, PropertyMeta):
+            raise TypeError("'propertyMeta' is not a PropertyMeta instance or None.")
+
+        self._meta = propertyMeta
+        self.setValue(value)
+
+    def getMetadata(self):
+        return self._meta
+
+    def getValue(self):
+        """"""
+        return self._value
+
+    def setValue(self, value):
+        """"""
+        if self._meta == None or self._meta.validate(value):
+            self._value = value
+        else:
+            raise ValueError("'value' failed validation.")
+
+
+# TODO: Design. You would read an property's Property Meta, then
+#       read the property's value (or something similar with callbacks?).
+#       Must support drilling down by
+#       providing the property value as a property reader for a
+#       collection or object base type. Should support a schema somehow?
+class PropertyReader(object):
+    """"""
+
+
+# TODO: Design. You would write one property (or set of property elements)
+#       at a time. Must support drilling down by providing a way to
+#       get a contained property writer for a collection or object base type.
+#       Should support a schema somehow?
+class PropertyWriter(object):
+    """"""
+
+
+class Packable(object):
+    """An Abstract Base Class that supports 'packing'
+    the state of an object to a PropertyWriter instance and
+    'unpacking' the state of an object from a PropertyReader
+    instance.
+
+    **Description:**
+
+    The process of 'packing' is simply writing any state
+    values as named properties to a passed PropertyWriter instance following
+    a known 'state design' that can later be unpacked by
+    any class implementing the same state design. Each state
+    design is associated with a particular State ID and
+    state designs may be versioned within a State ID using a date.
+
+    Different classes may support the same State ID, so long
+    as they also support the same state design and interface;
+    meaning they are interchangable and runtime Polymorphic. For
+    classes that might be dangerous if unpacked using states from
+    unknown sources it is generally a good idea to provide a
+    known safe version of the Packable object to use locally.
+    See PackableFactory class."""
+
+    def getStateId(self):
+        """Implementations must return the State ID associated
+        with the Packable object's state design and interface."""
+        raise NotImplementedError("Abstract method, must be implemented if subclass supports it..")
+
+    def pack(self, propertyWriter, hints):
+        """Implementations must write the current state of the instance to
+        the passed property writer, following a state design
+        associated with the State ID. To reduce state size, make
+        sure to use default values when writing properties. Hints
+        may be used to affect how the packing is done or may be
+        ignored."""
+        raise NotImplementedError("Abstract method, must be implemented if subclass supports it..")
+
+    def unpack(self, propertyReader, hints):
+        """Implementations must set the current state of the instance by
+        reading from the passed property reader, following a state design
+        associated with the State ID. To reduce state size, make
+        sure to set default values before reading properties. Hints
+        may be used to affect how the unåpacking is done or may be
+        ignored."""
+        raise NotImplementedError("Abstract method, must be implemented if subclass supports it..")
+
+# TODO: Consider moving this elsewhere.
+class PackableFactory(object):
+    """An abstract Base Class that supports creating new
+    instances of packable objects from a Packed State. These
+    instances do not have to be of the same class as was
+    packed so long as they support the same state format.
+    PackableFactory implementations may be 'chained' using a
+    parent factory such that if the current factory doesn't
+    support the State ID of the Packed State, the parent may
+    be invoked. If the parent does not supports the State ID
+    it may invoke its parent, and so on.
+
+    To create a PackableFactory, implement the makeObject()
+    method to create an object instance based on the state ID."""
+
+    def makeObject(self, stateId, hints):
+        """Creates a clean instance of a packable object for
+        the passed state ID, optionally using the hints."""
+        raise NotImplementedError("Abstract method, must be implemented if subclass supports it.")
+
+    def makePackable(self, propertyReader, hints):
+        """Creates a restored instance of a packable object
+        from the passed packed propertyWriter instance and hints."""
+        obj = self.makeObject(propertyReader.getStateId(), hints)
+        obj.unpack(propertyReader, hints)
+        return obj
+
+
+# TODO: Remove the below after making sure there aren't some ideas here we want
+#       to preserve.
 
 # TODO: As currently designed it consumes a lot of memory and CPU for deeply nested collection
 #   types. Refactor to use a evented callback converter, similar to a SAX style parser,

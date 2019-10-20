@@ -151,3 +151,17 @@ True if the passed value is iterable, otherwise false."""
     
     return False
 
+
+def isFunction(val):
+    """Returns true if the passed value is a Function
+type, otherwise false.
+
+**Parameters:**
+
+* val - value to test
+
+**Returns:**
+
+True if the passed value is a function, otherwise false."""
+    return callable(val)
+

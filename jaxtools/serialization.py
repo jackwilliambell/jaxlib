@@ -1,5 +1,7 @@
 """basetypes.py
 
+TODO: Refactor completely or remove entirely!
+
 Copyright (c) 2015, 2019 Jack William Bell. License: MIT
 
 Provides DictionaryWriter and DictionaryReader base classes for
@@ -49,7 +51,7 @@ from jaxtools.basetypes import isBaseTypeDict
 
 class DictionaryWriter(object):
     """An abstract Base Class that supports creating writing the contents of
-    a dictionary out to some external destination. The destination can be a
+    a base type dictionary out to some external destination. The destination can be a
     string, a buffer, a file, a network connection; anything you can serialize
     the property sheet to.
 
@@ -64,7 +66,7 @@ class DictionaryWriter(object):
 
 class DictionaryReader(object):
     """An abstract Base Class that supports reading and recreating a
-    dictionary from an external source. The source can be a string,
+    base type dictionary from an external source. The source can be a string,
     a buffer, a file, a network connection; anything you can deserialize a
     dictionary from.
 
