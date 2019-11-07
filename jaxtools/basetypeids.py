@@ -143,6 +143,8 @@ Copyright (c) 2016, 2018 Jack William Bell. License: MIT"""
 
 from enum import Enum
 
+from abc import ABCMeta, abstractmethod
+
 from jaxtools.typehelpers import isNone, isBool, isString, isInt, \
     isNum, isTuple, isList, isDict, isFunction
 
@@ -162,7 +164,6 @@ class BaseTypeIds(Enum):
     TAG = 19
     BLOB = 20
     PAIR = 24
-    TRIPLET = 25
     LIST = 32
     DICTIONARY = 33
     PACKABLE = 48
@@ -225,14 +226,42 @@ def isBaseTypeDict(val):
     return True
 
 
+def isValueTypeId(id):
+    """"""
+    return id in (BaseTypeIds.NULL, BaseTypeIds.BOOL, BaseTypeIds.INT, BaseTypeIds.FLOAT)
+
 def isValueType(val):
     """"""
     return isNone(val) or isBool(val) or isInt(val) or isNum(val)
+
+
+def isStorageTypeId(id):
+    """"""
+    return id in (BaseTypeIds.DATE, BaseTypeIds.STRING, BaseTypeIds.URL, BaseTypeIds.TAG,
+                  BaseTypeIds.BLOB)
 
 def isStorageType(val):
     """"""
     # TODO: Add date, url, tag, and blob checks
     return isString(val)
+
+
+def isPairTypeId(id):
+    """"""
+    return id == BaseTypeIds.PAIR
+
+
+def isPairType(val):
+    """"""
+    if isTuple(val) and len(val) == 2:
+        return isString(val[0]) and isBaseType(val[1])
+
+    return False
+
+
+def isCollectionTypeId(id):
+    """"""
+    return id in (BaseTypeIds.DICTIONARY, BaseTypeIds.LIST)
 
 
 def isCollectionType(val):
@@ -243,6 +272,11 @@ def isCollectionType(val):
         return True
 
     return False
+
+
+def isPackableTypeId(id):
+    """"""
+    return id == BaseTypeIds.PACKABLE
 
 
 def isPackableType(val):
@@ -268,12 +302,17 @@ def isBaseType(val):
 
     return False
 
+def isEndTypeId(id):
+    """"""
+    return id == BaseTypeIds.END
 
 ##
 ## Packables.
 ##
 
-class Packable(object):
+# TODO: PackableHeader type.
+
+class Packable(metaclass=ABCMeta):
     """An Abstract Base Class that supports 'packing'
     the state of an object to a PropertyWriter instance and
     'unpacking' the state of an object from a PropertyReader
@@ -296,11 +335,13 @@ class Packable(object):
     known safe version of the Packable object to use locally.
     See PackableFactory class."""
 
+    @abstractmethod
     def getStateId(self):
         """Implementations must return the State ID associated
         with the Packable object's state design and interface."""
-        raise NotImplementedError("Abstract method, must be implemented.")
+        pass
 
+    @abstractmethod
     def pack(self, propertyWriter, hints):
         """Implementations must write the current state of the instance to
         the passed property writer, following a state design
@@ -308,8 +349,9 @@ class Packable(object):
         sure to use default values when writing properties. Hints
         may be used to affect how the packing is done or may be
         ignored."""
-        raise NotImplementedError("Abstract method, must be implemented.")
+        pass
 
+    @abstractmethod
     def unpack(self, propertyReader, hints):
         """Implementations must set the current state of the instance by
         reading from the passed property reader, following a state design
@@ -317,10 +359,10 @@ class Packable(object):
         sure to set default values before reading properties. Hints
         may be used to affect how the unåpacking is done or may be
         ignored."""
-        raise NotImplementedError("Abstract method, must be implemented.")
+        pass
 
 
-class PackableFactory(object):
+class PackableFactory(metaclass=ABCMeta):
     """An abstract Base Class that supports creating new
     instances of packable objects from a Packed State. These
     instances do not have to be of the same class as was
@@ -334,10 +376,11 @@ class PackableFactory(object):
     To create a PackableFactory, implement the makeObject()
     method to create an object instance based on the state ID."""
 
+    @abstractmethod
     def makeObject(self, stateId, hints):
         """Creates a clean instance of a packable object for
         the passed state ID, optionally using the hints."""
-        raise NotImplementedError("Abstract method, must be implemented.")
+        pass
 
     def makePackable(self, propertyReader, hints):
         """Creates a restored instance of a packable object
@@ -351,52 +394,170 @@ class PackableFactory(object):
 ## Base Type reader/writer APIs.
 ##
 
-class BaseTypeReader(object):
+class BaseTypeReader(metaclass=ABCMeta):
     """An Abstract Base Class for base type reader implementations, where the elements
     are iterated as tuples consisting of the base type ID and the base type value, if
     the element is not a pair, collection or packable type.
 
-    If the element is a pair type the tuple contains only the base type ID and the pair name,
+    If the element is a pair type the tuple contains the pair base type ID and the pair name,
     the next element iterated after this 'header' is the pair value, but no 'END" marker is
-    required, as for collection and packable types. The value is subject to nesting such
+    required, as with collection and packable types. The value is subject to nesting such
     that pair values which are collection or packable types have their own headers and
     'END' markers.
 
-    If the element is a list type the tuple contains only the base type ID and
+    If the element is a list type the tuple contains only the list base type ID and
     every element iterated after this 'header' is a member of the list, until an 'END'
     base type ID is sent to indicate the end of the list. The value is subject to nesting such
     that list elements which are collection or packable types have their own headers and
     'END' markers.
 
-    If the element is a dictionary type the tuple contains only the base type ID and
+    If the element is a dictionary type the tuple contains the dictionary base type ID and
     the elements iterated after this 'header' are the member of the dictionary in the form
     of a pair name/value sets, until an 'END' base type ID is sent to indicate the end of the
     dictionary. The value is subject to nesting such that dictionary elements where the values
     are collection or packable types have their own headers and 'END' markers.
 
-    If the element is a packable type the tuple contains the base type ID and the packable header
-    and every element iterated after this 'header' is a member of the property list of the
+    If the element is a packable type the tuple contains the packable base type ID and the packable
+    header and every element iterated after this 'header' is a member of the property list of the
     packed object in the form of a pair element, until an 'END' base type ID is sent to indicate
     the end of the packable. The value is subject to nesting such that packable properties where
-    the property values are collection or packable types have their own headers and 'END' markers.
+    the property values are collection or packable types have their own head-ers and 'END' markers.
 
     TODO: Implementation notes and rules for iterating."""
+
     def __iter__(self):
-        raise NotImplementedError("Abstract method, must be implemented.")
+        return self
+
+    @abstractmethod
+    def __next__(self):
+        pass
+
+    @abstractmethod
+    def peek(self):
+        """Allows you to peek at the next element to be iterated without advancing the
+        iterator.
+
+        TODO: Consider if we REALLY need this and how hard it will be to implement for various scenarios."""
+        pass
 
     def close(self):
         """Closes the reader and releases its resources."""
-        pass # Abstract method, may be implemented.
+        pass # Abstract method, may be implemented if required by the use case.
 
+class GenericReader(BaseTypeReader):
+    """Simple implementation of BaseTypeReader that uses a generic iterator passed to
+    the instance in the constructor. Assumes the passed in iterator follows the rules
+    for a BaseTypeReader."""
 
-# TODO: Rewrite this function to use a callback object inheriting from a ABC instead of
-#   using discrete callback functions.
-def readWithCallbacks(reader, onValueFunc, onListFunc, onDictFunc, onPackableFunc, onEndFunc):
-    """Helper function for reading using SAX-style callbacks with a BaseTypeReader instance. All
-    callback functions must return either true or false and, if false is returned, this function
-    will exit and reading will stop."""
-    raise NotImplementedError("TODO.")
+    def __init__(self, iterator):
+        self._iterator = iterator
+        self._peeked = None
+        self._exc = None
 
+    def __next__(self):
+        ret = None
+
+        # Did an exception occur during a previous peek?
+        if not self._exc == None:
+            # Use the exception and clear it for next time.
+            e = self._exc
+            self._exc = None
+            raise e
+        # Did we previously peek?
+        elif not self._peeked == None:
+            # Use the peeked value and clear it for next time.
+            ret = self._peeked
+            self._peeked = None
+        else:
+            # Otherwise get next like usual.
+            ret = self._iterator.next()
+
+        # Done.
+        return ret
+
+    def peek(self):
+        # Did we not previously peek?
+        if self._peeked == None and self._exc == None:
+            # When we peek we need to check for an exception.
+            try:
+                self._peeked = self._iterator.next()
+            except Exception as e:
+                self._exc = e
+
+        # Do we have an exception, from this or a previous peek?
+        if not self._exc == None:
+            raise self._exc
+
+        # Done.
+        return self._peeked
+
+# TODO: Generic iterator for a python dictionary containing only base types and already packed packables.
+
+class ReaderCallback(metaclass=ABCMeta):
+    """An Abstract Base Class for base type reader SAX-style callbacks implementations, as used by
+    the readWithCallbacks() function."""
+    @abstractmethod
+    def onValue(self, baseTypeId, value):
+        """Called when a value is returned by the reader. Returns true to continue reading,
+        otherwise returns false. May raise an exception."""
+        return False
+
+    @abstractmethod
+    def onPairStart(self, name):
+        """Called when a pair is started by the reader. Returns true to continue reading,
+        otherwise returns false. May raise an exception."""
+        return False
+
+    @abstractmethod
+    def onListStart(self):
+        """Called when a list is started by the reader. Returns true to continue reading,
+        otherwise returns false. May raise an exception."""
+        return False
+
+    @abstractmethod
+    def onDictionaryStart(self):
+        """Called when a dictionary is started by the reader. Returns true to continue reading,
+        otherwise returns false. May raise an exception."""
+        return False
+
+    @abstractmethod
+    def onPackableStart(self, packableHeader):
+        """Called when a packable is started by the reader. Returns true to continue reading,
+        otherwise returns false. May raise an exception."""
+        return False
+
+    @abstractmethod
+    def onEnd(self):
+        """Indicates the end of a collection or packable read. Returns true to continue reading,
+        otherwise returns false. May raise an exception."""
+        return False
+
+def readWithCallbacks(reader, readerCallback):
+    """Helper function for reading using SAX-style callbacks with a BaseTypeReader instance.
+    Returns true on success, otherwise returns false. All callback functions must return either
+    true or false and, if false is returned, this function will return fase and reading will stop."""
+    for elem in reader:
+        if elem[0] == BaseTypeIds.END:
+            if not readerCallback.onEnd():
+                return False
+        elif elem[0] == BaseTypeIds.PAIR:
+            if not readerCallback.onPairStart(elem[1]):
+                return False
+        elif elem[0] == BaseTypeIds.LIST:
+            if not readerCallback.onListStart():
+                return False
+        elif elem[0] == BaseTypeIds.DICTIONARY:
+            if not readerCallback.onDictionaryStart():
+                return False
+        elif elem[0] == BaseTypeIds.PACKABLE:
+            if not readerCallback.onPackableStart(elem[1]):
+                return False
+        else:
+            # Assume a value if we got here.
+            if not readerCallback.onValue(elem[0], elem[1]):
+                return False
+
+    return True
 
 def readObject(reader, packableFactory=None):
     """Helper function for reading a collection or packable object from a BaseTypeReader instance.
@@ -405,78 +566,93 @@ def readObject(reader, packableFactory=None):
 
     Reads one object at a time. If the reader contains more data after the end marker for the
     object you will need to read again."""
-    raise NotImplementedError("TODO.") # NOTE: Implement using a callback instance.
+    raise NotImplementedError("TODO.") # NOTE: Implement using a ReaderCallback instance. (See above.)
 
 
-class BaseTypeWriter(object):
+class BaseTypeWriter(metaclass=ABCMeta):
     """An Abstract Base Class for base type reader implementations, where collections and
     packable types are written using a start/end syntax. Works as the converse of a BaseTypeReader
     implementation."""
 
+    @abstractmethod
     def writeNullValue(self):
         """Writes a null value."""
-        raise NotImplementedError("Abstract method, must be implemented.")
+        pass
 
+    @abstractmethod
     def writeBoolValue(self, value):
         """Writes a boolean value. The passed value must be a boolean or convertible to a boolean."""
-        raise NotImplementedError("Abstract method, must be implemented.")
+        pass
 
+    @abstractmethod
     def writeIntValue(self, value):
         """Writes a integer value. The passed value must be a integer or convertible to a integer."""
-        raise NotImplementedError("Abstract method, must be implemented.")
+        pass
 
+    @abstractmethod
     def writeFloatValue(self, value):
         """Writes a float value. The passed value must be a float or convertible to a float."""
-        raise NotImplementedError("Abstract method, must be implemented.")
+        pass
 
+    @abstractmethod
     def writeDateValue(self, value):
         """Writes a date value. The passed value must be a datetime or convertible to a datetime."""
-        raise NotImplementedError("Abstract method, must be implemented.")
+        pass
 
+    @abstractmethod
     def writeStringValue(self, value):
         """Writes a string value. The passed value must be a string or convertible to a string."""
-        raise NotImplementedError("Abstract method, must be implemented.")
+        pass
 
+    @abstractmethod
     def writeUrlValue(self, value):
         """Writes a url value. The passed value must be a url or convertible to a url."""
-        raise NotImplementedError("Abstract method, must be implemented.")
+        pass
 
+    @abstractmethod
     def writeTagValue(self, value):
         """Writes a tag value. The passed value must be a tag or convertible to a tag."""
-        raise NotImplementedError("Abstract method, must be implemented.")
+        pass
 
+    @abstractmethod
     def writeBlobValue(self, value):
         """Writes a blob value. The passed value must be a blob or convertible to a blob."""
-        raise NotImplementedError("Abstract method, must be implemented.")
+        pass
 
+    @abstractmethod
     def writePairStart(self, name):
         """Writes the name portion of a pair, after which the next write is the value portion, do
         not call writeEnd() after writing the value, as you would with a collection or packable write."""
-        raise NotImplementedError("Abstract method, must be implemented.")
+        pass
 
+    @abstractmethod
     def writeListStart(self):
         """Signals the start of a list, after which all writes are list members until you call
         writeEnd()."""
-        raise NotImplementedError("Abstract method, must be implemented.")
+        pass
 
+    @abstractmethod
     def writeDictionaryStart(self):
         """Signals the start of a list, after which all writes are dictionary members in the form
         of writePairStart() and pair value writes until you call writeEnd()."""
-        raise NotImplementedError("Abstract method, must be implemented.")
+        pass
 
+    @abstractmethod
     def writePackableStart(self, packableHeader):
         """Signals the start of a packable, after which all writes are object properties in the form
         of writePairStart() and pair value writes until you call writeEnd()."""
-        raise NotImplementedError("Abstract method, must be implemented.")
+        pass
 
+    @abstractmethod
     def writeEnd(self):
         """Indicates the end of a collection or packable write."""
-        raise NotImplementedError("Abstract method, must be implemented.")
+        pass
 
     def close(self):
         """Closes the writer and releases its resources."""
-        pass # Abstract method, may be implemented.
+        pass # Abstract method, may be implemented if required by the use case.
 
+# TODO: BaseTypeWriter implementation that writes to a python dictionary, including packing packables.
 
 def writeObject(writer, obj):
     """Helper function for writing a collection or packable object to a BaseTypeWriter instance.
