@@ -43,7 +43,7 @@ ast.literal_eval()/str(); has the same limitations as ast.literal_eval()
 """
 
 from ast import literal_eval
-from jaxtools.basetypes import isBaseTypeDict
+from jaxtools.basetypeids import isBaseTypeDict
 
 ##
 ## Base Classes

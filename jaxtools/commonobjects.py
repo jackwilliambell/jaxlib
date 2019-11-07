@@ -6,6 +6,38 @@ TODO: Docs
 # TODO: Add the following common objects: Table, FormattedText, Document,
 #       NumberRange, DateRange, Calendar, Timeline, others?
 
+class PropertyMeta(object):
+    """Provides Metadata"""
+    def __init__(self, name, type, validator=checkBaseType):
+        if not isString(name):
+            raise TypeError("'name' is not a valid type.")
+        if not isinstance(type, BaseTypes):
+            raise TypeError("'type' is not a BaseType enum value.")
+        if not isFunction(validator):
+            raise TypeError("'validator' is not a valid type.")
+
+        self._name = name
+        self._type = type
+        self._validator = validator
+
+    def getName(self):
+        """"""
+        return self._name
+
+    def getType(self):
+        """"""
+        return self._type
+
+    def validate(self, value):
+        """"""
+        return self._validator(value, self._type)
+
+
+# TODO: Design. This is basically a set of uniquely named PropertyMeta objects. Consider
+#       if it should also have other attributes, like a schema ID tag and hints.
+class PropertySchema(object):
+    """"""
+
 
 # TODO: Refactor to inherit from Packable.
 class PropertySheet(object):

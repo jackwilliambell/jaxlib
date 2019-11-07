@@ -33,13 +33,15 @@ These types, their tags, and their Python representations are:
 
 * blob - types.BufferType
 
+* pair - types.TupleType of two members, (except the first member of the pair *must*
+be a string and values must be base types; a base type dictionary is essentially a
+list of pairs)
+
 * list - types.ListType (except list members must be base types,
-types.TupleType supported by converting to a list)
+types; TupleType supported by converting to a list)
 
 * dictionary - types.DictType (except dictionary keys must be strings
 and values must be base types)
-
-* property jaxtools.basetypes.Property.
 
 * packable - jaxtools.basetypes.Packable
 
@@ -104,13 +106,18 @@ types which exceed that limit may be problematic.
 (NOTE: Python strings on a 64-bit machine may use hundreds of gigabytes
 of memory, but that does not mean APIs you pass them to will work properly.)
 
+TODO: Add tag type here. Also implement tag type or otherwise define it.
+
 ## Collection base types
 
-The set of base types include two collection types: list and dictionary.
-By their nature, collection base type memory requirements are not
-predictable. Moreover, base type collections can be nested. Dictionaries
-can contain lists and dictionaries as values and lists can contain lists
-and dictionaries as list members. While there is no design limit to this
+TODO: pair is not a collection type. Move and rewrite it's explanation. May
+  need to come up with new type nomeclature.
+
+The set of base types include three collection types: pair, list and
+dictionary. By their nature, collection base type memory requirements are not
+predictable. Moreover, base type collections can be nested. Pairs and dictionaries
+can contain pairs, lists and dictionaries as values and lists can contain pairs,
+lists and dictionaries as list members. While there is no design limit to this
 nesting, in practice deeply nested collections may fail to work properly
 or cause exceptions when passed to some APIs or when transferred to
 another base type software implementation.
@@ -125,10 +132,10 @@ possible and to test carefully if not. As a rule of thumb, collections with
 less than 1K members or 8 deep nesting are probably fine while collections
 which exceed those limits may be problematic.
 
-## Object base types
+## Packable base type
 
-The set of base types includes two object types: property and packable.
-TODO: Document
+There is one 'packable' base type, which is simply an object that supports
+the Packable interface and can be 'packed' and 'unpacked'.
 
 Created by Jack William Bell on 2016-10-16.
 
@@ -143,20 +150,23 @@ from jaxtools.typehelpers import isNone, isBool, isString, isInt, \
 ## Base Type Enumeration.
 ##
 
-class BaseTypes(Enum):
+class BaseTypeIds(Enum):
     """Enumeration of the base type IDs."""
     NULL = 0
     BOOL = 1
-    INT = 2
+    INT = 4
     FLOAT = 8
-    DATE = 9
-    STRING = 16
-    URL = 17
-    BLOB = 24
-    LIST = 25
-    DICTIONARY = 26
-    PACKABLE = 32
-    UNKNOWN = 255
+    DATE = 16
+    STRING = 17
+    URL = 18
+    TAG = 19
+    BLOB = 20
+    PAIR = 24
+    TRIPLET = 25
+    LIST = 32
+    DICTIONARY = 33
+    PACKABLE = 48
+    END = 255
 
 ##
 ## Helper functions.
@@ -215,9 +225,28 @@ def isBaseTypeDict(val):
     return True
 
 
-def isPackable(val):
-    """Returns true if the passed value is a
-    packed state, otherwise returns false."""
+def isValueType(val):
+    """"""
+    return isNone(val) or isBool(val) or isInt(val) or isNum(val)
+
+def isStorageType(val):
+    """"""
+    # TODO: Add date, url, tag, and blob checks
+    return isString(val)
+
+
+def isCollectionType(val):
+    """"""
+    if (isList(val) or isTuple(val)) and isBaseTypeList(val):
+        return True
+    elif isDict(val) and isBaseTypeDict(val):
+        return True
+
+    return False
+
+
+def isPackableType(val):
+    """Returns true if the passed value is a packable object, otherwise returns false."""
     return isinstance(val, Packable)
 
 
@@ -229,8 +258,8 @@ def isBaseType(val):
     # the code using it above before changing it, to make sure you
     # don't break anything or simply do something non-optimal.
     if isNone(val) or isBool(val) or isString(val) or isInt(val) or  \
-        isNum(val) or isPackable(val):
-        # TODO: Add date, url, and blob checks
+        isNum(val) or isPackableType(val):
+        # TODO: Add date, url, tag, and blob checks
         return True
     elif (isList(val) or isTuple(val)) and isBaseTypeList(val):
         return True
@@ -241,83 +270,8 @@ def isBaseType(val):
 
 
 ##
-## Properties and Packables implementation.
+## Packables.
 ##
-
-class PropertyMeta(object):
-    """"""
-    def __init__(self, name, type, validator=checkBaseType):
-        if not isString(name):
-            raise TypeError("'name' is not a valid type.")
-        if not isinstance(type, BaseTypes):
-            raise TypeError("'type' is not a BaseType enum value.")
-        if not isFunction(validator):
-            raise TypeError("'validator' is not a valid type.")
-
-        self._name = name
-        self._type = type
-        self._validator = validator
-
-    def getName(self):
-        """"""
-        return self._name
-
-    def getType(self):
-        """"""
-        return self._type
-
-    def validate(self, value):
-        """"""
-        return self._validator(value, self._type)
-
-
-# TODO: Design. This is basically a set of uniquely named PropertyMeta objects. Consider
-#       if it should also have other attributes, like a schema ID tag and hints.
-class PropertySchema(object):
-    """"""
-
-
-# TODO: Consider if this should allow you to set an immutable flag.
-class Property(object):
-    """"""
-    def __init__(self, value, propertyMeta=None):
-        if not isinstance(propertyMeta, PropertyMeta):
-            raise TypeError("'propertyMeta' is not a PropertyMeta instance or None.")
-
-        self._meta = propertyMeta
-        self.setValue(value)
-
-    def getMetadata(self):
-        return self._meta
-
-    def getValue(self):
-        """"""
-        return self._value
-
-    def setValue(self, value):
-        """"""
-        if self._meta == None or self._meta.validate(value):
-            self._value = value
-        else:
-            raise ValueError("'value' failed validation.")
-
-
-# TODO: Design. You would read an property's Property Meta, then
-#       read the property's value (or something similar with callbacks?).
-#       Must support drilling down by
-#       providing the property value as a property reader for a
-#       collection or object base type. Should support a schema somehow?
-class PropertyReader(object):
-    """"""
-
-
-# TODO: Design. You would write one property (or set of property elements)
-#       at a time. Must support drilling down by providing a way to
-#       get a contained property writer for a collection or object base type.
-#       Should support a schema somehow?
-class PropertyWriter(object):
-    """"""
-
 
 class Packable(object):
     """An Abstract Base Class that supports 'packing'
@@ -345,7 +299,7 @@ class Packable(object):
     def getStateId(self):
         """Implementations must return the State ID associated
         with the Packable object's state design and interface."""
-        raise NotImplementedError("Abstract method, must be implemented if subclass supports it..")
+        raise NotImplementedError("Abstract method, must be implemented.")
 
     def pack(self, propertyWriter, hints):
         """Implementations must write the current state of the instance to
@@ -354,7 +308,7 @@ class Packable(object):
         sure to use default values when writing properties. Hints
         may be used to affect how the packing is done or may be
         ignored."""
-        raise NotImplementedError("Abstract method, must be implemented if subclass supports it..")
+        raise NotImplementedError("Abstract method, must be implemented.")
 
     def unpack(self, propertyReader, hints):
         """Implementations must set the current state of the instance by
@@ -363,9 +317,9 @@ class Packable(object):
         sure to set default values before reading properties. Hints
         may be used to affect how the unåpacking is done or may be
         ignored."""
-        raise NotImplementedError("Abstract method, must be implemented if subclass supports it..")
+        raise NotImplementedError("Abstract method, must be implemented.")
 
-# TODO: Consider moving this elsewhere.
+
 class PackableFactory(object):
     """An abstract Base Class that supports creating new
     instances of packable objects from a Packed State. These
@@ -383,7 +337,7 @@ class PackableFactory(object):
     def makeObject(self, stateId, hints):
         """Creates a clean instance of a packable object for
         the passed state ID, optionally using the hints."""
-        raise NotImplementedError("Abstract method, must be implemented if subclass supports it.")
+        raise NotImplementedError("Abstract method, must be implemented.")
 
     def makePackable(self, propertyReader, hints):
         """Creates a restored instance of a packable object
@@ -393,72 +347,140 @@ class PackableFactory(object):
         return obj
 
 
-# TODO: Remove the below after making sure there aren't some ideas here we want
-#       to preserve.
+##
+## Base Type reader/writer APIs.
+##
 
-# TODO: As currently designed it consumes a lot of memory and CPU for deeply nested collection
-#   types. Refactor to use a evented callback converter, similar to a SAX style parser,
-#   and a similar writer strategy for deserializaton/serialization lets you reduce
-#   the overhead to performing them one at a time. Think this through carefully.
-#   https://en.wikipedia.org/wiki/Simple_API_for_XML
-#   https://rapidjson.org/md_doc_sax.html
+class BaseTypeReader(object):
+    """An Abstract Base Class for base type reader implementations, where the elements
+    are iterated as tuples consisting of the base type ID and the base type value, if
+    the element is not a pair, collection or packable type.
 
-def convertToBaseType(val, safeCopy=True):
-    """Converts the passed value to a matching base type, if possible.
-    Throws an exception if the value cannot be converted. Always returns
-    a copy of the value, including for storage and collection types, even
-    when the value is already a base type.
+    If the element is a pair type the tuple contains only the base type ID and the pair name,
+    the next element iterated after this 'header' is the pair value, but no 'END" marker is
+    required, as for collection and packable types. The value is subject to nesting such
+    that pair values which are collection or packable types have their own headers and
+    'END' markers.
 
-    Uses the following strategies:
+    If the element is a list type the tuple contains only the base type ID and
+    every element iterated after this 'header' is a member of the list, until an 'END'
+    base type ID is sent to indicate the end of the list. The value is subject to nesting such
+    that list elements which are collection or packable types have their own headers and
+    'END' markers.
 
-    * For value types it simply returns a copy of the value converted to
-    the closest matching base type (may be the exact same value)
+    If the element is a dictionary type the tuple contains only the base type ID and
+    the elements iterated after this 'header' are the member of the dictionary in the form
+    of a pair name/value sets, until an 'END' base type ID is sent to indicate the end of the
+    dictionary. The value is subject to nesting such that dictionary elements where the values
+    are collection or packable types have their own headers and 'END' markers.
 
-    * For storage types the following is performed:
-        - If the value is a string and the string contains an ISO 8601
-        formatted date value, the string is converted to a datetime
-        - If the value is a string and the string contains a URN in
-        RFC 1737/RFC 2141 format, the string is converted to a urn
-        - TODO: Determine how blobs are converted, consider making
-            the blob base type a bytearray
-        - TODO: Consider if there any standard types that could be
-            converted to strings or blobs
+    If the element is a packable type the tuple contains the base type ID and the packable header
+    and every element iterated after this 'header' is a member of the property list of the
+    packed object in the form of a pair element, until an 'END' base type ID is sent to indicate
+    the end of the packable. The value is subject to nesting such that packable properties where
+    the property values are collection or packable types have their own headers and 'END' markers.
 
-    * For collection types the following is performed:
-        - If the value is a propertysheet or a packedstate, the value
-        is cloned
-        - If the value is a dictionary or a list it is recursively
-        iterated and copied and every value/list member is converted
-        appropriately
-        - If the value is a dictionary containing the special keys
-        for a propertysheet or a packedstate it is converted to
-        a propertysheet or a packedstate, as appropriate
-    """
-    raise NotImplementedError("Not yet implemented...")
+    TODO: Implementation notes and rules for iterating."""
+    def __iter__(self):
+        raise NotImplementedError("Abstract method, must be implemented.")
 
-def convertToSerializableType(val, safeCopy=True):
-    """Converts the passed base type value to a serializeable type, if possible.
-    Throws an exception if the value cannot be converted. Always returns
-    a copy of the value, including for storage and collection types, even
-    when the value is already serializable.
+    def close(self):
+        """Closes the reader and releases its resources."""
+        pass # Abstract method, may be implemented.
 
-    Uses the following strategies:
 
-    * For value types it simply returns a copy of the value, except:
-        - datetime is converted to a string in ISO 8601 format
+# TODO: Rewrite this function to use a callback object inheriting from a ABC instead of
+#   using discrete callback functions.
+def readWithCallbacks(reader, onValueFunc, onListFunc, onDictFunc, onPackableFunc, onEndFunc):
+    """Helper function for reading using SAX-style callbacks with a BaseTypeReader instance. All
+    callback functions must return either true or false and, if false is returned, this function
+    will exit and reading will stop."""
+    raise NotImplementedError("TODO.")
 
-    * For storage types the following is performed:
-        - If the value is a URN it is converted into a string in
-        RFC 1737/RFC 2141 format
-        - TODO: Determine how blobs are converted
-        - Strings are simply copied
 
-    * For collection types the following is performed:
-        - If the value is a propertysheet or a packedstate, the value
-        is converted to a dictionary and the dictionary is recursively
-        made serializable as below
-        - If the value is a dictionary or a list it is recursively
-        iterated and copied and every value/list member is converted
-        appropriately
-    """
-    raise NotImplementedError("Not yet implemented...")
+def readObject(reader, packableFactory=None):
+    """Helper function for reading a collection or packable object from a BaseTypeReader instance.
+    If the reader contents contain packables, you will need to provide a compatible packable
+    factory instance.
+
+    Reads one object at a time. If the reader contains more data after the end marker for the
+    object you will need to read again."""
+    raise NotImplementedError("TODO.") # NOTE: Implement using a callback instance.
+
+
+class BaseTypeWriter(object):
+    """An Abstract Base Class for base type reader implementations, where collections and
+    packable types are written using a start/end syntax. Works as the converse of a BaseTypeReader
+    implementation."""
+
+    def writeNullValue(self):
+        """Writes a null value."""
+        raise NotImplementedError("Abstract method, must be implemented.")
+
+    def writeBoolValue(self, value):
+        """Writes a boolean value. The passed value must be a boolean or convertible to a boolean."""
+        raise NotImplementedError("Abstract method, must be implemented.")
+
+    def writeIntValue(self, value):
+        """Writes a integer value. The passed value must be a integer or convertible to a integer."""
+        raise NotImplementedError("Abstract method, must be implemented.")
+
+    def writeFloatValue(self, value):
+        """Writes a float value. The passed value must be a float or convertible to a float."""
+        raise NotImplementedError("Abstract method, must be implemented.")
+
+    def writeDateValue(self, value):
+        """Writes a date value. The passed value must be a datetime or convertible to a datetime."""
+        raise NotImplementedError("Abstract method, must be implemented.")
+
+    def writeStringValue(self, value):
+        """Writes a string value. The passed value must be a string or convertible to a string."""
+        raise NotImplementedError("Abstract method, must be implemented.")
+
+    def writeUrlValue(self, value):
+        """Writes a url value. The passed value must be a url or convertible to a url."""
+        raise NotImplementedError("Abstract method, must be implemented.")
+
+    def writeTagValue(self, value):
+        """Writes a tag value. The passed value must be a tag or convertible to a tag."""
+        raise NotImplementedError("Abstract method, must be implemented.")
+
+    def writeBlobValue(self, value):
+        """Writes a blob value. The passed value must be a blob or convertible to a blob."""
+        raise NotImplementedError("Abstract method, must be implemented.")
+
+    def writePairStart(self, name):
+        """Writes the name portion of a pair, after which the next write is the value portion, do
+        not call writeEnd() after writing the value, as you would with a collection or packable write."""
+        raise NotImplementedError("Abstract method, must be implemented.")
+
+    def writeListStart(self):
+        """Signals the start of a list, after which all writes are list members until you call
+        writeEnd()."""
+        raise NotImplementedError("Abstract method, must be implemented.")
+
+    def writeDictionaryStart(self):
+        """Signals the start of a list, after which all writes are dictionary members in the form
+        of writePairStart() and pair value writes until you call writeEnd()."""
+        raise NotImplementedError("Abstract method, must be implemented.")
+
+    def writePackableStart(self, packableHeader):
+        """Signals the start of a packable, after which all writes are object properties in the form
+        of writePairStart() and pair value writes until you call writeEnd()."""
+        raise NotImplementedError("Abstract method, must be implemented.")
+
+    def writeEnd(self):
+        """Indicates the end of a collection or packable write."""
+        raise NotImplementedError("Abstract method, must be implemented.")
+
+    def close(self):
+        """Closes the writer and releases its resources."""
+        pass # Abstract method, may be implemented.
+
+
+def writeObject(writer, obj):
+    """Helper function for writing a collection or packable object to a BaseTypeWriter instance.
+
+    Writes one object at a time. If you want to write another object to the same writer you will
+    need to write again."""
+    raise NotImplementedError("TODO.")

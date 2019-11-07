@@ -93,8 +93,8 @@ when unpacking
 Created by Jack William Bell on 2016-10-16.
 Copyright (c) 2016, 2018 Jack William Bell. License: MIT"""
 
-from jaxtools.basetypes import PropertySheet, PackedState, \
-    isPackable, isPropertySheet
+from jaxtools.basetypeids import PropertySheet, PackedState, \
+    isPackableType, isPropertySheet
 from jaxtools.typehelpers import isNone, isBool, isString, isInt, \
     isNum, isTuple, isList, isDict
 from jaxtools.serialization import DictionaryWriter, DictionaryReader
@@ -156,7 +156,7 @@ def unpackIt(factory, state, hints, overrideStateId=None):
 
     The unpacked object instance or None if the factory doesn't support
     the State ID."""
-    assert (isPackable(state)), "State must be a PackedState instance."
+    assert (isPackableType(state)), "State must be a PackedState instance."
     stateId = overrideStateId if overrideStateId else state.stateId()
     assert (isString(stateId)), "State Id must be a string."
     factory.makePackable(stateId, state.properties, hints)

@@ -2,7 +2,7 @@ import unittest
 # unittest docs: https://docs.python.org/3/library/unittest.html
 
 # We import everything with * because name collisions are an error in themselves.
-from jaxtools.basetypes import *
+from jaxtools.basetypeids import *
 
 
 class TestBaseTypes(unittest.TestCase):
