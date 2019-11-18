@@ -29,16 +29,19 @@ These types, their tags, and their Python representations are:
 
 * urn - urllib.request.Request
 
-* TODO: Add 'tag' type with a name, date, other? See user-defined tags as used in YAML.
+* TODO: Add 'tag' type with a name, date, other? See user-defined tags
+as used in YAML. Need to implement tag type or otherwise define it.
 
 * blob - types.BufferType
 
-* pair - types.TupleType of two members, (except the first member of the pair *must*
-be a string and values must be base types; a base type dictionary is essentially a
-list of pairs)
+* pair - types.TupleType of two members, (except the first member of
+the pair *must be* a string and second member *must be* a base type
+value other than a pair; in other words a pair cannot contain another
+pair as a value and pairs cannot be nested (note that a base type
+dictionary is essentially a list of pairs with unique names.)
 
-* list - types.ListType (except list members must be base types,
-types; TupleType supported by converting to a list)
+* list - types.ListType (except all list members must be base types
+and types.TupleType is supported by converting to a list)
 
 * dictionary - types.DictType (except dictionary keys must be strings
 and values must be base types)
@@ -47,23 +50,37 @@ and values must be base types)
 
 ## Goals
 
+* Provide a predictable machine and language-independent way to store
+data and to transfer data between applications
+
 * Restrict data values to a small, but comprehensive, set of known
 types; where the types are easy to serialize and are either a standard
 type of nearly every programming languge or are easy to
 implement/emulate if not
 
-* Provide a predictable machine and language-independent way to store
-data and to transfer data between applications
-
 * Provide a predictable machine and language-independent way to ensure
-data interchange by serializing to and deserializing from common wire
-data transfer formats such as JSON and YAML or even HTTP MIME types
-such as 'multipart/form-data'
+data interchange by serializing to and deserializing from standard data
+interchange formats such as JSON and YAML or even common wire
+data transfer formats like HTTP MIME types and 'multipart/form-data'
+    - Object types not directly supported by standard data interchange
+    formats must remain serializable to their syntax using some
+    format-appropriate rules and representations
+
+* Provide a rich set of object types not directly supported by the standard
+data interchange formats, but which do enable common use cases and arbitrary
+object types
 
 * Provide a predictable machine and language-independent way to
-represent the state of common objects; IE objects with similar state
+represent the state of arbitrary objects; so long as the object's
+state can be represented in base types (See 'packables')
+
+* Provide a predictable machine and language-independent way to
+represent the state of Common Objects (CO); IE objects with similar state
 and implementations, but not using the same classes or even the same
 programming language (See 'packables')
+
+* Provide a high level of safety when deserializing objects from unknown
+sources
 
 ## Non-goals
 
@@ -76,6 +93,10 @@ some base type APIs may be particuarily slow when used with large or
 deeply nested collections (See isBaseType() and the to/from dictionary
 methods of propertysheet and packedstate)
 
+* Base types do not support every possible object type
+
+* Base types do not support every possible data interchange format
+
 ## Value base types
 
 The set of base types includes five value types: null, bool, int,
@@ -87,7 +108,7 @@ when transferred to another base type software implementation.
 
 ## Storage base types
 
-The set of base types includes three storage types: string, url, and
+The set of base types includes four storage types: string, urn, tag, and
 blob. Storage types contain zero to N bytes and their memory
 requirements are not predictable.
 
@@ -98,29 +119,38 @@ type. Moreover, particularity large storage types may fail to work
 properly or cause exceptions when passed to some APIs or when
 transferred to another base type software implementation.
 
-In general it is best to avoid very large byte sizes in storage types
-if possible and to test carefully if not. As a rule of thumb, storage
+In general it is best to avoid very large byte sizes in storage types,
+if possible, and to test carefully if not. As a rule of thumb, storage
 types with less than 256K total bytes are probably fine while storage
 types which exceed that limit may be problematic.
 
 (NOTE: Python strings on a 64-bit machine may use hundreds of gigabytes
 of memory, but that does not mean APIs you pass them to will work properly.)
 
-TODO: Add tag type here. Also implement tag type or otherwise define it.
+## Tuple base types
+
+There is currently one tuple base type: pair. (In the future there may be
+other tuple types.) Pairs are represented as a 2-tuple where the first
+member of the pair *must be* a string and second member *must be* a base type
+value other than a pair; in other words a pair cannot directly contain another
+pair and pairs cannot be nested. However, a pair may contain a list or a
+dictionary base type, which themselves contain pairs.
 
 ## Collection base types
 
-TODO: pair is not a collection type. Move and rewrite it's explanation. May
-  need to come up with new type nomeclature.
-
-The set of base types include three collection types: pair, list and
-dictionary. By their nature, collection base type memory requirements are not
-predictable. Moreover, base type collections can be nested. Pairs and dictionaries
-can contain pairs, lists and dictionaries as values and lists can contain pairs,
-lists and dictionaries as list members. While there is no design limit to this
+The set of base types include two collection types: list and dictionary. By
+their nature, collection base type memory requirements are not predictable.
+Moreover, base type collections can be nested. Lists may contain lists and
+dictionaries as list members and dictionaries may contain lists and
+dictionaries as keyed values. While there is no design limit to this
 nesting, in practice deeply nested collections may fail to work properly
 or cause exceptions when passed to some APIs or when transferred to
 another base type software implementation.
+
+Note: from a logical standpoint a dictionary is a list of pairs where the
+name portion of the pair is the dictionary key and must be unique. For this
+reason, a dictionary entry cannot contain a pair as a value because pairs
+cannot be directly nested. See Tuple base types.
 
 Particularity large collections, with or without nesting, may also fail
 to work properly or cause exceptions when passed to some APIs. Also, large
@@ -149,7 +179,7 @@ from jaxtools.typehelpers import isNone, isBool, isString, isInt, \
     isNum, isTuple, isList, isDict, isFunction
 
 ##
-## Base Type Enumeration.
+## Base Type IDs and Tags.
 ##
 
 class BaseTypeIds(Enum):
@@ -158,16 +188,32 @@ class BaseTypeIds(Enum):
     BOOL = 1
     INT = 4
     FLOAT = 8
-    DATE = 16
-    STRING = 17
-    URL = 18
-    TAG = 19
-    BLOB = 20
-    PAIR = 24
-    LIST = 32
-    DICTIONARY = 33
-    PACKABLE = 48
+    DATE = 9
+    STRING = 32
+    URN = 33
+    TAG = 34
+    BLOB = 35
+    PAIR = 64
+    LIST = 128
+    DICTIONARY = 129
+    PACKABLE = 254
     END = 255
+
+BaseTypeTags = {
+    (BaseTypeIds.NULL, "tag:bt.co,2019/null"),
+    (BaseTypeIds.BOOL, "tag:bt.co,2019/bool"),
+    (BaseTypeIds.INT, "tag:bt.co,2019/int"),
+    (BaseTypeIds.FLOAT, "tag:bt.co,2019/float"),
+    (BaseTypeIds.DATE, "tag:bt.co,2019/date"),
+    (BaseTypeIds.STRING, "tag:bt.co,2019/string"),
+    (BaseTypeIds.URN, "tag:bt.co,2019/urn"),
+    (BaseTypeIds.TAG, "tag:bt.co,2019/tag"),
+    (BaseTypeIds.BLOB, "tag:bt.co,2019/blob"),
+    (BaseTypeIds.PAIR, "tag:bt.co,2019/pair"),
+    (BaseTypeIds.LIST, "tag:bt.co,2019/list"),
+    (BaseTypeIds.DICTIONARY, "tag:bt.co,2019/dictionary"),
+    (BaseTypeIds.PACKABLE, "tag:bt.co,2019/packable")
+}
 
 ##
 ## Helper functions.
@@ -342,7 +388,7 @@ class Packable(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def pack(self, propertyWriter, hints):
+    def pack(self, baseTypeWriter, hints):
         """Implementations must write the current state of the instance to
         the passed property writer, following a state design
         associated with the State ID. To reduce state size, make
@@ -352,7 +398,7 @@ class Packable(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def unpack(self, propertyReader, hints):
+    def unpack(self, baseTypeReader, hints):
         """Implementations must set the current state of the instance by
         reading from the passed property reader, following a state design
         associated with the State ID. To reduce state size, make
@@ -382,11 +428,11 @@ class PackableFactory(metaclass=ABCMeta):
         the passed state ID, optionally using the hints."""
         pass
 
-    def makePackable(self, propertyReader, hints):
+    def makePackable(self, baseTypeReader, hints):
         """Creates a restored instance of a packable object
         from the passed packed propertyWriter instance and hints."""
-        obj = self.makeObject(propertyReader.getStateId(), hints)
-        obj.unpack(propertyReader, hints)
+        obj = self.makeObject(baseTypeReader.getStateId(), hints)
+        obj.unpack(baseTypeReader, hints)
         return obj
 
 
@@ -432,17 +478,46 @@ class BaseTypeReader(metaclass=ABCMeta):
     def __next__(self):
         pass
 
-    @abstractmethod
-    def peek(self):
-        """Allows you to peek at the next element to be iterated without advancing the
-        iterator.
-
-        TODO: Consider if we REALLY need this and how hard it will be to implement for various scenarios."""
-        pass
-
     def close(self):
         """Closes the reader and releases its resources."""
         pass # Abstract method, may be implemented if required by the use case.
+
+
+class ChildReader(BaseTypeReader):
+    """Simple implementation of BaseTypeReader that iterates a single object
+    from a parent reader passed in the constructor. Also passed in the constructor
+    is the first base type element to iterate, after which it iterates the parent reader.
+    The first element is required and must be a valid element. If the first element
+    is not a collection, packable, or pair then it only iterates the first element
+    and never iterates from the parent reader."""
+    def __init__(self, parentReader, firstElem):
+        self._parentReader = parentReader
+        # TODO: Error if firstElem is not a valid element.
+        self._first = firstElem
+        # TODO: If firstElem is not a collection, packable or pair, set depth to 0.
+        self._depth = 1
+
+    def __next__(self):
+        if self._depth < 1 and not self._first == None:
+            # TODO: Raise exception for EOF
+            pass
+
+        elem = None
+        if not self._first == None:
+            elem = self._parentReader.next()
+        else:
+            elem = self._first
+            self._first = None
+
+        if elem[0] == BaseTypeIds.END:
+            # Decrement depth.
+            self._depth = self._depth - 1
+
+        # TODO: Increment depth for collections and packables. Consider
+        #   how to handle pairs.
+
+        return elem
+
 
 class GenericReader(BaseTypeReader):
     """Simple implementation of BaseTypeReader that uses a generic iterator passed to
@@ -451,45 +526,10 @@ class GenericReader(BaseTypeReader):
 
     def __init__(self, iterator):
         self._iterator = iterator
-        self._peeked = None
-        self._exc = None
 
     def __next__(self):
-        ret = None
+        return self._iterator.next()
 
-        # Did an exception occur during a previous peek?
-        if not self._exc == None:
-            # Use the exception and clear it for next time.
-            e = self._exc
-            self._exc = None
-            raise e
-        # Did we previously peek?
-        elif not self._peeked == None:
-            # Use the peeked value and clear it for next time.
-            ret = self._peeked
-            self._peeked = None
-        else:
-            # Otherwise get next like usual.
-            ret = self._iterator.next()
-
-        # Done.
-        return ret
-
-    def peek(self):
-        # Did we not previously peek?
-        if self._peeked == None and self._exc == None:
-            # When we peek we need to check for an exception.
-            try:
-                self._peeked = self._iterator.next()
-            except Exception as e:
-                self._exc = e
-
-        # Do we have an exception, from this or a previous peek?
-        if not self._exc == None:
-            raise self._exc
-
-        # Done.
-        return self._peeked
 
 # TODO: Generic iterator for a python dictionary containing only base types and already packed packables.
 
@@ -621,7 +661,7 @@ class BaseTypeWriter(metaclass=ABCMeta):
 
     @abstractmethod
     def writePairStart(self, name):
-        """Writes the name portion of a pair, after which the next write is the value portion, do
+        """Writes the name portion of a pair, after which the next write *must be* the value portion, do
         not call writeEnd() after writing the value, as you would with a collection or packable write."""
         pass
 
@@ -652,7 +692,154 @@ class BaseTypeWriter(metaclass=ABCMeta):
         """Closes the writer and releases its resources."""
         pass # Abstract method, may be implemented if required by the use case.
 
-# TODO: BaseTypeWriter implementation that writes to a python dictionary, including packing packables.
+
+class NotInACollectionError(Exception):
+    """Error raised when writing a collection member, but a collection has not been 'started'
+    in the writer."""
+    pass
+
+
+class InvalidKeyError(Exception):
+    """Error raised when writing a dict member with a missing key or starting a pair with
+    and invalid key."""
+    pass
+
+
+class InvalidTypeError(Exception):
+    """Error raised when writing a value that is not a base type."""
+    pass
+
+
+class DictWriter(BaseTypeWriter):
+    """BaseTypeWriter implementation that writes to a Python dictionary, including packing packables."""
+
+    def __init__(self, dict=None):
+        """Initializes the DictWriter. You can pass an optional dictionary to use, otherwise
+        one is created."""
+        # Did we get a dict to use?
+        if not isDict(dict):
+            dict = {}
+
+        # Set up the initial state.
+        self._dict = dict
+        self._collectionStack = []
+        self._list = None
+        self._dict = None
+        self._keyName = None
+        self._closed = False
+
+    def getDict(self):
+        """Returns the underlying dictionary being written to."""
+        return self._dict
+
+    def _writeValue(self, value):
+        if self._closed:
+            raise ValueError("Writer is closed.")
+
+        if self._keyName and self._list: # Are we in a list and have a key?
+            # Add a pair to the current list.
+            self._list.append((self._keyName, value))
+            # Clear the current key for the next write.
+            self._keyName = None
+        elif self._list:  # Are we in a list, but no key?
+            # Add value to the current list.
+            self._list.append(value)
+        elif self._keyName and self._dict: # Are we in a dict and have a key?
+            # Add value to the current dict using the current key.
+            self._dict.add(self._keyName, value)
+            # Clear the current key for the next write.
+            self._keyName = None
+        elif self._dict:
+            # Dicts require a key.
+            raise InvalidKeyError
+        else:
+            # Can't write if we aren't in a collection.
+            raise NotInACollectionError
+
+    def writeNullValue(self):
+        """Writes a null value."""
+        self._writeValue(None)
+
+    def writeBoolValue(self, value):
+        """Writes a boolean value. The passed value must be a boolean or convertible to a boolean."""
+        if isBool(value):
+            if value:
+                self._writeValue(True)
+            else:
+                self._writeValue(False)
+        else:
+            raise InvalidTypeError
+
+    def writeIntValue(self, value):
+        """Writes a integer value. The passed value must be a integer or convertible to a integer."""
+        if isInt(value):
+            self._writeValue(value)
+        else:
+            raise InvalidTypeError
+
+    def writeFloatValue(self, value):
+        """Writes a float value. The passed value must be a float or convertible to a float."""
+        raise NotImplementedError("Not yet inplemented. Need type check.")
+
+    def writeDateValue(self, value):
+        """Writes a date value. The passed value must be a datetime or convertible to a datetime."""
+        raise NotImplementedError("TODO. Need type check.")
+
+    def writeStringValue(self, value):
+        """Writes a string value. The passed value must be a string or convertible to a string."""
+        if isString(value):
+            self._writeValue(value)
+        else:
+            raise InvalidTypeError
+
+    def writeUrlValue(self, value):
+        """Writes a url value. The passed value must be a url or convertible to a url."""
+        raise NotImplementedError("TODO. Need type check.")
+
+    def writeTagValue(self, value):
+        """Writes a tag value. The passed value must be a tag or convertible to a tag."""
+        raise NotImplementedError("TODO. Need type check.")
+
+    def writeBlobValue(self, value):
+        """Writes a blob value. The passed value must be a blob or convertible to a blob."""
+        raise NotImplementedError("TODO. Need type check.")
+
+    def writePairStart(self, name):
+        """Writes the name portion of a pair, after which the next write *must be* the value portion, do
+        not call writeEnd() after writing the value, as you would with a collection or packable write."""
+        if self._keyName:
+            raise InvalidKeyError("Pair already started. Pairs cannot be nested.")
+
+        # Set the current key.
+        self._keyName = name
+
+    def writeListStart(self):
+        """Signals the start of a list, after which all writes are list members until you call
+        writeEnd()."""
+        pass
+
+    def writeDictionaryStart(self):
+        """Signals the start of a list, after which all writes are dictionary members in the form
+        of writePairStart() and pair value writes until you call writeEnd()."""
+        pass
+
+    def writePackableStart(self, packableHeader):
+        """Signals the start of a packable, after which all writes are object properties in the form
+        of writePairStart() and pair value writes until you call writeEnd()."""
+        pass
+
+    def writeEnd(self):
+        """Indicates the end of a collection or packable write."""
+        pass
+
+    def close(self):
+        """Closes the writer and releases its resources."""
+        self._closed = True
+
+
+# TODO: Subclass of DictWriter named 'TypeEncoderDictWriter' that encodes type information in the
+#  data set using tuples of (typeTag, value) instead of the raw value.
+
 
 def writeObject(writer, obj):
     """Helper function for writing a collection or packable object to a BaseTypeWriter instance.
