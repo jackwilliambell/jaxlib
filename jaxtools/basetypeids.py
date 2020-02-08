@@ -214,7 +214,7 @@ Copyright (c) 2016, 2018 Jack William Bell. License: MIT"""
 
 from enum import Enum
 
-from datetime import datetime, date
+from datetime import datetime, date as dt
 
 from abc import ABCMeta, abstractmethod
 
@@ -230,65 +230,66 @@ class Tag(object):
 
     See also: https://taguri.org/
     """
-    def __init__(self, tagUri=None, authority="",
-                 date=date(datetime.now().date().year, 1, 1),
-                 specific = "", fragment = None):
+    def __init__(self, tagUri=None, authority=None, date=None,
+                 specific=None, fragment=None):
 
         if isString(tagUri):
-            # Attempt to parse the tag string.
+            # Attempt to parse the tag string. Start by splitting on colons.
             colonSplit = tagUri.split(':')
             if len(colonSplit) == 3 and colonSplit[0].lower() == 'tag':
+                # Split the tagging entity on commas.
                 commaSplit = colonSplit[1].split(',')
                 if len(commaSplit) == 2:
-                    authority = commaSplit[0]
-                    # Attempt to convert the date three different ways.
-                    try:
-                        date = datetime.strptime(commaSplit[1], '%Y-%m-%d').date()
-                    except:
+                    if authority is None:
+                        authority = commaSplit[0]
+                    if date is None:
+                        # Attempt to convert the date three different ways.
                         try:
-                            date = datetime.strptime(commaSplit[1], '%Y-%m').date()
+                            date = datetime.strptime(commaSplit[1], '%Y-%m-%d').date()
                         except:
                             try:
-                                date = datetime.strptime(commaSplit[1], '%Y').date()
+                                date = datetime.strptime(commaSplit[1], '%Y-%m').date()
                             except:
-                                # Could not convert date.
-                                raise ValueError("tagUri not a valid RFC 4151 Tag URI (date).")
-                    hashSplit = colonSplit[2].split('#')
-                    if len(hashSplit == 1):
-                        # No fragment.
-                        specific = commaSplit[2]
-                        fragment = None
-                    elif len(hashSplit == 2):
-                        # Found a fragment.
-                        specific = hashSplit[0]
-                        fragment = hashSplit[1]
-                    else:
-                        raise ValueError("tagUri not a valid RFC 4151 Tag URI (fragment).")
+                                try:
+                                    date = datetime.strptime(commaSplit[1], '%Y').date()
+                                except:
+                                    # Could not convert date.
+                                    raise ValueError("tagUri not a valid RFC 4151 Tag URI (date).")
                 else:
                     raise ValueError("tagUri not a valid RFC 4151 Tag URI (tagging entity).")
+                # Split the rest into the specific name and a (possible) fragment.
+                hashSplit = colonSplit[2].split('#')
+                if len(hashSplit) > 2:
+                    raise ValueError("tagUri not a valid RFC 4151 Tag URI (fragment).")
+                if len(hashSplit) >= 1 and specific is None:
+                    specific = hashSplit[0]
+                if len(hashSplit <= 2) and fragment is None:
+                    fragment = hashSplit[1]
             else:
                 raise ValueError("tagUri not a valid RFC 4151 Tag URI.")
         elif tagUri is not None:
             raise TypeError("tagUri not a string.")
 
+        # Do we have a date at this point?
+        if date is None:
+            date = dt(datetime.now().date().year, 1, 1)
+
         # Double-check each argument type, since they could have been parsed from
         # the tag string or they could have been passed separately.
-        if isString(authority):
-            self.authority = authority
-        else:
+        if not isString(authority):
             raise TypeError("Invalid argument type (authority).")
-        if isDate(date):
-            self.date = date
-        else:
+        if not isDate(date):
             raise TypeError("Invalid argument type (date).")
-        if isString(specific):
-            self.specific = specific
-        else:
+        if not isString(specific):
             raise TypeError("Invalid argument type (specific).")
-        if isString(fragment) or fragment is None:
-            self.fragment = fragment
-        else:
+        if not isString(fragment) or fragment is not None:
             raise TypeError("Invalid argument type (fragment).")
+
+        # If we made it all the way here we are good!
+        self.authority = authority
+        self.date = date
+        self.specific = specific
+        self.fragment = fragment
 
     def __str__(self):
         if self.fragment is None:
@@ -336,20 +337,20 @@ class BaseTypeIds(Enum):
 
 BaseTypeTags = {
     # TODO: Use a real dsn name instead of 'bt.co', which may be in use.
-    BaseTypeIds.NULL: Tag("tag:bt.co,2019/null"),
-    BaseTypeIds.BOOL: Tag("tag:bt.co,2019/bool"),
-    BaseTypeIds.INT: Tag("tag:bt.co,2019/int"),
-    BaseTypeIds.FLOAT: Tag("tag:bt.co,2019/float"),
-    BaseTypeIds.DATETIME: Tag("tag:bt.co,2019/date"),
-    BaseTypeIds.STRING: Tag("tag:bt.co,2019/string"),
-    BaseTypeIds.URN: Tag("tag:bt.co,2019/urn"),
-    BaseTypeIds.TAG: Tag("tag:bt.co,2019/tag"),
-    BaseTypeIds.BLOB: Tag("tag:bt.co,2019/blob"),
-    BaseTypeIds.PAIR: Tag("tag:bt.co,2019/pair"),
+    BaseTypeIds.NULL: Tag(tagUri="tag:bt.co,2019/null"),
+    BaseTypeIds.BOOL: Tag(tagUri="tag:bt.co,2019/bool"),
+    BaseTypeIds.INT: Tag(tagUri="tag:bt.co,2019/int"),
+    BaseTypeIds.FLOAT: Tag(tagUri="tag:bt.co,2019/float"),
+    BaseTypeIds.DATETIME: Tag(tagUri="tag:bt.co,2019/date"),
+    BaseTypeIds.STRING: Tag(tagUri="tag:bt.co,2019/string"),
+    BaseTypeIds.URN: Tag(tagUri="tag:bt.co,2019/urn"),
+    BaseTypeIds.TAG: Tag(tagUri="tag:bt.co,2019/tag"),
+    BaseTypeIds.BLOB: Tag(tagUri="tag:bt.co,2019/blob"),
+    BaseTypeIds.PAIR: Tag(tagUri="tag:bt.co,2019/pair"),
     # TODO: Add color, geolocation, predicate
-    BaseTypeIds.LIST: Tag("tag:bt.co,2019/list"),
-    BaseTypeIds.DICTIONARY: Tag("tag:bt.co,2019/dictionary"),
-    BaseTypeIds.PACKABLE: Tag("tag:bt.co,2019/packable")
+    BaseTypeIds.LIST: Tag(tagUri="tag:bt.co,2019/list"),
+    BaseTypeIds.DICTIONARY: Tag(tagUri="tag:bt.co,2019/dictionary"),
+    BaseTypeIds.PACKABLE: Tag(tagUri="tag:bt.co,2019/packable")
 }
 
 
