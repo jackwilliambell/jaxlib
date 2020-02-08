@@ -219,7 +219,7 @@ from datetime import datetime, date
 from abc import ABCMeta, abstractmethod
 
 from jaxtools.typehelpers import isNone, isBool, isString, isInt, \
-    isNum, isTuple, isList, isDict, isFunction, isDateTime
+    isNum, isTuple, isList, isDict, isFunction, isDateTime, isDate
 
 ##
 ## Tag type.
@@ -230,45 +230,65 @@ class Tag(object):
 
     See also: https://taguri.org/
     """
-    def __init__(self, tagUri):
-        if tagUri is None:
-            raise ValueError("tagString required.")
-        elif isString(tagUri):
-            # Parse the tag string.
+    def __init__(self, tagUri=None, authority="",
+                 date=date(datetime.now().date().year, 1, 1),
+                 specific = "", fragment = None):
+
+        if isString(tagUri):
+            # Attempt to parse the tag string.
             colonSplit = tagUri.split(':')
             if len(colonSplit) == 3 and colonSplit[0].lower() == 'tag':
                 commaSplit = colonSplit[1].split(',')
                 if len(commaSplit) == 2:
-                    self.authority = commaSplit[0]
+                    authority = commaSplit[0]
                     # Attempt to convert the date three different ways.
                     try:
-                        self.date = datetime.strptime(commaSplit[1], '%Y-%m-%d').date()
+                        date = datetime.strptime(commaSplit[1], '%Y-%m-%d').date()
                     except:
                         try:
-                            self.date = datetime.strptime(commaSplit[1], '%Y-%m').date()
+                            date = datetime.strptime(commaSplit[1], '%Y-%m').date()
                         except:
                             try:
-                                self.date = datetime.strptime(commaSplit[1], '%Y').date()
+                                date = datetime.strptime(commaSplit[1], '%Y').date()
                             except:
                                 # Could not convert date.
                                 raise ValueError("tagUri not a valid RFC 4151 Tag URI (date).")
                     hashSplit = colonSplit[2].split('#')
                     if len(hashSplit == 1):
                         # No fragment.
-                        self.specific = commaSplit[2]
-                        self.fragment = None
+                        specific = commaSplit[2]
+                        fragment = None
                     elif len(hashSplit == 2):
                         # Found a fragment.
-                        self.specific = hashSplit[0]
-                        self.fragment = hashSplit[1]
+                        specific = hashSplit[0]
+                        fragment = hashSplit[1]
                     else:
                         raise ValueError("tagUri not a valid RFC 4151 Tag URI (fragment).")
                 else:
                     raise ValueError("tagUri not a valid RFC 4151 Tag URI (tagging entity).")
             else:
                 raise ValueError("tagUri not a valid RFC 4151 Tag URI.")
+        elif tagUri is not None:
+            raise TypeError("tagUri not a string.")
+
+        # Double-check each argument type, since they could have been parsed from
+        # the tag string or they could have been passed separately.
+        if isString(authority):
+            self.authority = authority
         else:
-            raise ValueError("tagUri not a string.")
+            raise TypeError("Invalid argument type (authority).")
+        if isDate(date):
+            self.date = date
+        else:
+            raise TypeError("Invalid argument type (date).")
+        if isString(specific):
+            self.specific = specific
+        else:
+            raise TypeError("Invalid argument type (specific).")
+        if isString(fragment) or fragment is None:
+            self.fragment = fragment
+        else:
+            raise TypeError("Invalid argument type (fragment).")
 
     def __str__(self):
         if self.fragment is None:

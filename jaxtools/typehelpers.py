@@ -88,11 +88,8 @@ True if the passed value is a numeric value, otherwise false."""
 
 
 def isDateTime(val):
-    """Returns true if the passed value is a Python datetime type,
+    """Returns true if the passed value is a Python datetime.datetime type,
 otherwise false.
-
-NOTE: Python datetime.date and datetime.time are also considered
-a datetime type.
 
 **Parameters:**
 
@@ -100,10 +97,36 @@ a datetime type.
 
 **Returns:**
 
-True if the passed value is a datetime, otherwise false."""
-    return isinstance(val, datetime.datetime) or \
-           isinstance(val, datetime.date) or \
-           isinstance(val, datetime.time)
+True if the passed value is a datetime.datetime, otherwise false."""
+    return isinstance(val, datetime.datetime)
+
+
+def isDate(val):
+    """Returns true if the passed value is a Python datetime.date type,
+otherwise false.
+
+**Parameters:**
+
+* val - value to test
+
+**Returns:**
+
+True if the passed value is a datetime.date, otherwise false."""
+    return isinstance(val, datetime.date)
+
+
+def isTime(val):
+    """Returns true if the passed value is a Python datetime.time type,
+otherwise false.
+
+**Parameters:**
+
+* val - value to test
+
+**Returns:**
+
+True if the passed value is a datetime.date, otherwise false."""
+    return isinstance(val, datetime.time)
 
 
 def isString(val):
