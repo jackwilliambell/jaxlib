@@ -1,7 +1,7 @@
 """# Base Types
 
 Base types are a set of basic data types that
-are easy to serialize and are either a standard 
+are easy to serialize and are either a standard
 type of nearly every programming languge or are
 easy to implement/emulate if not.
 
@@ -13,15 +13,15 @@ from to support easy serialization/deserialization.
 
 ## List of base types
 
-These types, their tags, and their Python representations are:
+These base types, their tags, and their Python representations are:
 
 * null - types.NoneType
 
 * bool - types.BooleanType
 
-* int - types.IntType, types.LongType
+* int - types.IntType, types.LongType; also types.FloatType if no decimals
 
-* float - types.FloatType
+* float - types.FloatType; also types.IntType, types.LongType
 
 * datetime - datetime.datetime
 
@@ -34,11 +34,34 @@ as used in YAML. Need to implement tag type or otherwise define it.
 
 * blob - types.BufferType
 
-* pair - types.TupleType of two members, (except the first member of
-the pair *must be* a string and second member *must be* a base type
-value other than a pair; in other words a pair cannot contain another
-pair as a value and pairs cannot be nested (note that a base type
-dictionary is essentially a list of pairs with unique names.)
+* pair - types.TupleType of two members, from 1 to 2:
+    - name (string, cannot be empty)
+    - value (any base type value other than a pair; in other words
+    a pair cannot contain another pair as a value)
+
+* geolocation - types.TupleType of three members, from 1 to 3:
+    - lattitude (float from -90 to +90)
+    - longitude (float from -180 to +180)
+    - altitude (float, units in meters, zero is sea level)
+
+* color - types.TupleType of three to seven members where only the
+first three are required and the other four are each additionally
+optional (meaning you can have a five member color including Hue
+and without Saturation, but if you want Saturation without Hue
+it will be a six member color and you will need to set the Hue
+value to 'not supplied'), these are from 1 to 7:
+    - Red (integer from 0 to 255)
+    - Green (integer from 0 to 255)
+    - Blue (integer from 0 to 255)
+    - Alpha (float from 0 to 1, negative value means 'not supplied')
+    - Hue (float from 0 to 1, negative value means 'not supplied')
+    - Saturation (float from 0 to 1, negative value means 'not supplied')
+    - Luminosity (float from 0 to 1, negative value means 'not supplied')
+
+* predicate - types.TupleType of three members, from 1 to 3:
+    - object (any value or storage base type)
+    - verb (tag, may be empty)
+    - subject (any value or storage base type)
 
 * list - types.ListType (except all list members must be base types
 and types.TupleType is supported by converting to a list)
@@ -99,18 +122,22 @@ methods of propertysheet and packedstate)
 
 ## Value base types
 
-The set of base types includes five value types: null, bool, int,
-float, and date. All value types may be represented in memory with
+Value types are a commonly used subset of primitive data values.
+All value types may be represented in memory with
 a known byte size, making their memory requirements predictable.
+The set of base types includes five value types: null, bool, int,
+float, and date.
 
 In general all value types will work the same for all APIs and
 when transferred to another base type software implementation.
 
 ## Storage base types
 
-The set of base types includes four storage types: string, urn, tag, and
-blob. Storage types contain zero to N bytes and their memory
-requirements are not predictable.
+Storage base types consist of simple and commonly used types that
+contain zero to N bytes of data and their storage requirements are not
+predictable. They may provide methods to access their contents by
+offset or by some structured chunk. The set of base types includes
+four storage types: string, urn, tag, and blob.
 
 While there is no design limit to the upper size of storage types, in
 practice the total number of bytes you can store in each storage type
@@ -127,14 +154,28 @@ types which exceed that limit may be problematic.
 (NOTE: Python strings on a 64-bit machine may use hundreds of gigabytes
 of memory, but that does not mean APIs you pass them to will work properly.)
 
-## Tuple base types
+## Structure base types
 
-There is currently one tuple base type: pair. (In the future there may be
-other tuple types.) Pairs are represented as a 2-tuple where the first
-member of the pair *must be* a string and second member *must be* a base type
-value other than a pair; in other words a pair cannot directly contain another
-pair and pairs cannot be nested. However, a pair may contain a list or a
-dictionary base type, which themselves contain pairs.
+Structure base types consist of simple and commonly used data structures
+with a wide variety of use cases. There are currently four structure base
+types: pair, color, geolocation and predicate. (In the future there may
+be other structure types.)
+
+Structure types are likely to require conversion to a different, but
+similar, form before they may be used with local APIs. They may include
+data members not required for local usage. They may be used in ways
+different than the usage alluded to by their name.
+
+## Pair
+
+Pairs are represented as a 2-tuple where the first member of the pair
+*must be* a non-empty string and the second member *must
+be* a base type value other than a pair; in other words a pair cannot
+directly contain another pair and pairs cannot be nested. However, a
+pair may contain a list or a dictionary base type value, which themselves
+contain pairs.
+
+TODO: Add color, geolocation, predicate
 
 ## Collection base types
 
@@ -167,7 +208,7 @@ which exceed those limits may be problematic.
 There is one 'packable' base type, which is simply an object that supports
 the Packable interface and can be 'packed' and 'unpacked'.
 
-Created by Jack William Bell on 2016-10-16.
+Created by Jack William Bell on 2016-10-16, last updated 2019-12-10.
 
 Copyright (c) 2016, 2018 Jack William Bell. License: MIT"""
 
@@ -176,7 +217,8 @@ from enum import Enum
 from abc import ABCMeta, abstractmethod
 
 from jaxtools.typehelpers import isNone, isBool, isString, isInt, \
-    isNum, isTuple, isList, isDict, isFunction
+    isNum, isTuple, isList, isDict, isFunction, isDateTime
+
 
 ##
 ## Base Type IDs and Tags.
@@ -188,41 +230,86 @@ class BaseTypeIds(Enum):
     BOOL = 1
     INT = 4
     FLOAT = 8
-    DATE = 9
-    STRING = 32
-    URN = 33
-    TAG = 34
-    BLOB = 35
-    PAIR = 64
-    LIST = 128
-    DICTIONARY = 129
-    PACKABLE = 254
-    END = 255
+    DATETIME = 9
+    STRING = 64
+    URN = 65
+    TAG = 66
+    BLOB = 67
+    PAIR = 128
+    COLOR = 129
+    GEOLOCATION = 130
+    PREDICATE = 131
+    LIST = 256
+    DICTIONARY = 257
+    PACKABLE = 384
+    END = 65535
+
 
 BaseTypeTags = {
-    (BaseTypeIds.NULL, "tag:bt.co,2019/null"),
-    (BaseTypeIds.BOOL, "tag:bt.co,2019/bool"),
-    (BaseTypeIds.INT, "tag:bt.co,2019/int"),
-    (BaseTypeIds.FLOAT, "tag:bt.co,2019/float"),
-    (BaseTypeIds.DATE, "tag:bt.co,2019/date"),
-    (BaseTypeIds.STRING, "tag:bt.co,2019/string"),
-    (BaseTypeIds.URN, "tag:bt.co,2019/urn"),
-    (BaseTypeIds.TAG, "tag:bt.co,2019/tag"),
-    (BaseTypeIds.BLOB, "tag:bt.co,2019/blob"),
-    (BaseTypeIds.PAIR, "tag:bt.co,2019/pair"),
-    (BaseTypeIds.LIST, "tag:bt.co,2019/list"),
-    (BaseTypeIds.DICTIONARY, "tag:bt.co,2019/dictionary"),
-    (BaseTypeIds.PACKABLE, "tag:bt.co,2019/packable")
+    # TODO: Use actual tag type instead of string.
+    BaseTypeIds.NULL: "tag:bt.co,2019/null",
+    BaseTypeIds.BOOL: "tag:bt.co,2019/bool",
+    BaseTypeIds.INT: "tag:bt.co,2019/int",
+    BaseTypeIds.FLOAT: "tag:bt.co,2019/float",
+    BaseTypeIds.DATETIME: "tag:bt.co,2019/date",
+    BaseTypeIds.STRING: "tag:bt.co,2019/string",
+    BaseTypeIds.URN: "tag:bt.co,2019/urn",
+    BaseTypeIds.TAG: "tag:bt.co,2019/tag",
+    BaseTypeIds.BLOB: "tag:bt.co,2019/blob",
+    BaseTypeIds.PAIR: "tag:bt.co,2019/pair",
+    # TODO: Add color, geolocation, predicate
+    BaseTypeIds.LIST: "tag:bt.co,2019/list",
+    BaseTypeIds.DICTIONARY: "tag:bt.co,2019/dictionary",
+    BaseTypeIds.PACKABLE: "tag:bt.co,2019/packable"
 }
 
+
 ##
-## Helper functions.
+## Type Helper functions.
 ##
 
-def checkBaseType(val, baseTypeEnum):
-    """Returns true if the passed value is a valid type for the
-    passed Base Types enumeration."""
-    raise NotImplementedError("Not yet implemented...")
+# TODO: Consider making these a sub-module, frx TypeHelpers.IsValueTypeId(someId).
+
+def isValueTypeId(id):
+    """"""
+    return id in (BaseTypeIds.NULL, BaseTypeIds.BOOL, BaseTypeIds.INT, BaseTypeIds.FLOAT)
+
+
+def isStorageTypeId(id):
+    """"""
+    return id in (BaseTypeIds.DATE, BaseTypeIds.STRING, BaseTypeIds.URL, BaseTypeIds.TAG,
+                  BaseTypeIds.BLOB)
+
+
+def isStructureId(id):
+    """"""
+    return id == BaseTypeIds.PAIR # TODO: Add color, geolocation, predicate
+
+
+def isCollectionTypeId(id):
+    """"""
+    return id in (BaseTypeIds.DICTIONARY, BaseTypeIds.LIST)
+
+
+def isPackableTypeId(id):
+    """"""
+    return id == BaseTypeIds.PACKABLE
+
+
+def isEndTypeId(id):
+    """"""
+    return id == BaseTypeIds.END
+
+
+def isBaseTypePair(val):
+    """"""
+    if isTuple(val) and len(val) == 2:
+        return isString(val[0]) and isBaseType(val[1])
+
+    return False
+
+
+# TODO: Add color, geolocation, predicate 'is' checks.
 
 
 def isBaseTypeList(val):
@@ -272,85 +359,76 @@ def isBaseTypeDict(val):
     return True
 
 
-def isValueTypeId(id):
-    """"""
-    return id in (BaseTypeIds.NULL, BaseTypeIds.BOOL, BaseTypeIds.INT, BaseTypeIds.FLOAT)
-
-def isValueType(val):
-    """"""
-    return isNone(val) or isBool(val) or isInt(val) or isNum(val)
-
-
-def isStorageTypeId(id):
-    """"""
-    return id in (BaseTypeIds.DATE, BaseTypeIds.STRING, BaseTypeIds.URL, BaseTypeIds.TAG,
-                  BaseTypeIds.BLOB)
-
-def isStorageType(val):
-    """"""
-    # TODO: Add date, url, tag, and blob checks
-    return isString(val)
-
-
-def isPairTypeId(id):
-    """"""
-    return id == BaseTypeIds.PAIR
-
-
-def isPairType(val):
-    """"""
-    if isTuple(val) and len(val) == 2:
-        return isString(val[0]) and isBaseType(val[1])
-
-    return False
-
-
-def isCollectionTypeId(id):
-    """"""
-    return id in (BaseTypeIds.DICTIONARY, BaseTypeIds.LIST)
-
-
-def isCollectionType(val):
-    """"""
-    if (isList(val) or isTuple(val)) and isBaseTypeList(val):
-        return True
-    elif isDict(val) and isBaseTypeDict(val):
-        return True
-
-    return False
-
-
-def isPackableTypeId(id):
-    """"""
-    return id == BaseTypeIds.PACKABLE
-
-
-def isPackableType(val):
+def isBaseTypePackable(val):
     """Returns true if the passed value is a packable object, otherwise returns false."""
     return isinstance(val, Packable)
+
+
+_baseTypeCheckers = {
+    BaseTypeIds.NULL: isNone,
+    BaseTypeIds.BOOL: isBool,
+    BaseTypeIds.INT: isInt,
+    BaseTypeIds.FLOAT: isNum,
+    BaseTypeIds.DATETIME: isDateTime,
+    BaseTypeIds.STRING: isString,
+    BaseTypeIds.URN: isString, # TODO: Fix
+    BaseTypeIds.TAG: isString, # TODO: Fix
+    BaseTypeIds.BLOB: isString, # TODO: Fix
+    BaseTypeIds.PAIR: isBaseTypePair,
+    # TODO: Add color, geolocation, predicate
+    BaseTypeIds.LIST: isBaseTypeList,
+    BaseTypeIds.DICTIONARY: isBaseTypeDict,
+    BaseTypeIds.PACKABLE: isBaseTypePackable
+}
+
+
+def checkBaseType(val, baseTypeEnum):
+    """Returns true if the passed value is a valid type for the
+    passed Base Types enumeration."""
+    try:
+        return _baseTypeCheckers[baseTypeEnum](val)
+    except:
+        pass
+
+    return False
+
+
+def getBaseTypeId(val):
+    """Returns the base type ID of the passed value. Throws a
+    TypeError exception if the passed value is not a valid base type."""
+
+    # Test value using every checker until one returns true or
+    # no checker returns true.
+    for id in _baseTypeCheckers.keys():
+        try:
+            if _baseTypeCheckers[id](val):
+                return id
+        except:
+            pass
+
+    raise TypeError("Invalid Base Type.")
 
 
 def isBaseType(val):
     """Returns true if the passed value is a valid base type,
     otherwise returns false."""
 
-    # This if statement is structured this way for a reason. Look at
-    # the code using it above before changing it, to make sure you
-    # don't break anything or simply do something non-optimal.
-    if isNone(val) or isBool(val) or isString(val) or isInt(val) or  \
-        isNum(val) or isPackableType(val):
-        # TODO: Add date, url, tag, and blob checks
-        return True
-    elif (isList(val) or isTuple(val)) and isBaseTypeList(val):
-        return True
-    elif isDict(val) and isBaseTypeDict(val):
-        return True
+    # Test value using every checker until one returns true or
+    # no checker returns true.
+    for id in _baseTypeCheckers.keys():
+        try:
+            if _baseTypeCheckers[id](val):
+                return True
+        except:
+            pass
 
     return False
 
-def isEndTypeId(id):
-    """"""
-    return id == BaseTypeIds.END
+
+# TODO: Add coerce type functions that check strings or other types
+# for values that can be coerced into a specific base type and return
+# the converted value as the requested type or throw an exception if
+# it cannot be converted.
 
 ##
 ## Packables.
@@ -572,6 +650,7 @@ class ReaderCallback(metaclass=ABCMeta):
         otherwise returns false. May raise an exception."""
         return False
 
+
 def readWithCallbacks(reader, readerCallback):
     """Helper function for reading using SAX-style callbacks with a BaseTypeReader instance.
     Returns true on success, otherwise returns false. All callback functions must return either
@@ -598,6 +677,7 @@ def readWithCallbacks(reader, readerCallback):
                 return False
 
     return True
+
 
 def readObject(reader, packableFactory=None):
     """Helper function for reading a collection or packable object from a BaseTypeReader instance.

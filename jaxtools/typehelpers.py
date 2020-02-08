@@ -14,6 +14,7 @@ These functions are meant for the rare cases where 'Duck Typing'
 isn't a valid choice."""
 
 from builtins import str
+import datetime
 import collections
 
 def isNone(val):
@@ -29,6 +30,7 @@ def isNone(val):
     True if the passed value is None, otherwise false."""
     return val is None
 
+
 def isBool(val):
     """Returns true if the passed value is the Python booleanf
     type, otherwise false.
@@ -42,19 +44,6 @@ def isBool(val):
     True if the passed value is a boolean, otherwise false."""
     return isinstance(val, bool)
 
-def isString(val):
-    """Returns true if the passed value is a Python string
-(ASCII or Unicode) type, otherwise false.
-
-**Parameters:**
-
-* val - The name of the file to open; must be a
-valid file for the current diretory context
-
-**Returns:**
-
-True if the passed value is a list, otherwise false."""
-    return isinstance(val, str)
 
 def isInt(val):
     """Returns true if the passed value is a Python integer
@@ -77,6 +66,7 @@ True if the passed value is an integer value, otherwise false."""
     
     return False
 
+
 def isNum(val):
     """Returns true if the passed value is a Python numeric
 value, otherwise false. (Returns true for any numeric type.)
@@ -96,6 +86,41 @@ True if the passed value is a numeric value, otherwise false."""
     
     return False
 
+
+def isDateTime(val):
+    """Returns true if the passed value is a Python datetime type,
+otherwise false.
+
+NOTE: Python datetime.date and datetime.time are also considered
+a datetime type.
+
+**Parameters:**
+
+* val - value to test
+
+**Returns:**
+
+True if the passed value is a datetime, otherwise false."""
+    return isinstance(val, datetime.datetime) or \
+           isinstance(val, datetime.date) or \
+           isinstance(val, datetime.time)
+
+
+def isString(val):
+    """Returns true if the passed value is a Python string
+(ASCII or Unicode) type, otherwise false.
+
+**Parameters:**
+
+* val - The name of the file to open; must be a
+valid file for the current diretory context
+
+**Returns:**
+
+True if the passed value is a list, otherwise false."""
+    return isinstance(val, str)
+
+
 def isTuple(val):
     """Returns true if the passed value is a Python tuple type,
 otherwise false.
@@ -108,6 +133,7 @@ otherwise false.
 
 True if the passed value is a tuple, otherwise false."""
     return isinstance(val, tuple)
+
 
 def isList(val):
     """Returns true if the passed value is a Python list type,
@@ -122,6 +148,7 @@ otherwise false.
 True if the passed value is a list, otherwise false."""
     return isinstance(val, list)
 
+
 def isDict(val):
     """Returns true if the passed value is a python
 dictionary type, otherwise false.
@@ -134,6 +161,7 @@ dictionary type, otherwise false.
 
 True if the passed value is a dictionary, otherwise false."""
     return isinstance(val, dict)
+
 
 def isIterable(val):
     """Returns true if the passed value is an iterable
