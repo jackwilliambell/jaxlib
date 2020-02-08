@@ -27,7 +27,7 @@ These base types, their tags, and their Python representations are:
 
 * string - types.StringType, types.UnicodeType
 
-* urn - urllib.request.Request
+* urn - TODO: Consider use cases. Create a URN type? Make URI instead?
 
 * TODO: Add 'tag' type with a name, date, other? See user-defined tags
 as used in YAML. Need to implement tag type or otherwise define it.
@@ -214,11 +214,80 @@ Copyright (c) 2016, 2018 Jack William Bell. License: MIT"""
 
 from enum import Enum
 
+from datetime import datetime, date
+
 from abc import ABCMeta, abstractmethod
 
 from jaxtools.typehelpers import isNone, isBool, isString, isInt, \
     isNum, isTuple, isList, isDict, isFunction, isDateTime
 
+##
+## Tag type.
+##
+
+class Tag(object):
+    """Tags are objects based on RFC 4151: the 'tag' URI Scheme.
+
+    See also: https://taguri.org/
+    """
+    def __init__(self, tagUri):
+        if tagUri is None:
+            raise ValueError("tagString required.")
+        elif isString(tagUri):
+            # Parse the tag string.
+            colonSplit = tagUri.split(':')
+            if len(colonSplit) == 3 and colonSplit[0].lower() == 'tag':
+                commaSplit = colonSplit[1].split(',')
+                if len(commaSplit) == 2:
+                    self.authority = commaSplit[0]
+                    # Attempt to convert the date three different ways.
+                    try:
+                        self.date = datetime.strptime(commaSplit[1], '%Y-%m-%d').date()
+                    except:
+                        try:
+                            self.date = datetime.strptime(commaSplit[1], '%Y-%m').date()
+                        except:
+                            try:
+                                self.date = datetime.strptime(commaSplit[1], '%Y').date()
+                            except:
+                                # Could not convert date.
+                                raise ValueError("tagUri not a valid RFC 4151 Tag URI (date).")
+                    hashSplit = colonSplit[2].split('#')
+                    if len(hashSplit == 1):
+                        # No fragment.
+                        self.specific = commaSplit[2]
+                        self.fragment = None
+                    elif len(hashSplit == 2):
+                        # Found a fragment.
+                        self.specific = hashSplit[0]
+                        self.fragment = hashSplit[1]
+                    else:
+                        raise ValueError("tagUri not a valid RFC 4151 Tag URI (fragment).")
+                else:
+                    raise ValueError("tagUri not a valid RFC 4151 Tag URI (tagging entity).")
+            else:
+                raise ValueError("tagUri not a valid RFC 4151 Tag URI.")
+        else:
+            raise ValueError("tagUri not a string.")
+
+    def __str__(self):
+        if self.fragment is None:
+            return "tag:{}:{}".format(self.taggingEntityString(), self.specific)
+
+        return "tag:{}:{}#{}".format(self.taggingEntityString(),
+                                     self.specific, self.fragment)
+
+    def dateString(self):
+        if self.date.day == 1:
+            if self.date.month == 1:
+                return "{}".format(self.date.year)
+            else:
+                return "{}-{}".format(self.date.year, self.date.month)
+        else:
+            return "{}-{}-{}".format(self.date.year, self.date.month, self.date.day)
+
+    def taggingEntityString(self):
+        return "{},{}".format(self.authority, self.dateString())
 
 ##
 ## Base Type IDs and Tags.
@@ -246,21 +315,21 @@ class BaseTypeIds(Enum):
 
 
 BaseTypeTags = {
-    # TODO: Use actual tag type instead of string.
-    BaseTypeIds.NULL: "tag:bt.co,2019/null",
-    BaseTypeIds.BOOL: "tag:bt.co,2019/bool",
-    BaseTypeIds.INT: "tag:bt.co,2019/int",
-    BaseTypeIds.FLOAT: "tag:bt.co,2019/float",
-    BaseTypeIds.DATETIME: "tag:bt.co,2019/date",
-    BaseTypeIds.STRING: "tag:bt.co,2019/string",
-    BaseTypeIds.URN: "tag:bt.co,2019/urn",
-    BaseTypeIds.TAG: "tag:bt.co,2019/tag",
-    BaseTypeIds.BLOB: "tag:bt.co,2019/blob",
-    BaseTypeIds.PAIR: "tag:bt.co,2019/pair",
+    # TODO: Use a real dsn name instead of 'bt.co', which may be in use.
+    BaseTypeIds.NULL: Tag("tag:bt.co,2019/null"),
+    BaseTypeIds.BOOL: Tag("tag:bt.co,2019/bool"),
+    BaseTypeIds.INT: Tag("tag:bt.co,2019/int"),
+    BaseTypeIds.FLOAT: Tag("tag:bt.co,2019/float"),
+    BaseTypeIds.DATETIME: Tag("tag:bt.co,2019/date"),
+    BaseTypeIds.STRING: Tag("tag:bt.co,2019/string"),
+    BaseTypeIds.URN: Tag("tag:bt.co,2019/urn"),
+    BaseTypeIds.TAG: Tag("tag:bt.co,2019/tag"),
+    BaseTypeIds.BLOB: Tag("tag:bt.co,2019/blob"),
+    BaseTypeIds.PAIR: Tag("tag:bt.co,2019/pair"),
     # TODO: Add color, geolocation, predicate
-    BaseTypeIds.LIST: "tag:bt.co,2019/list",
-    BaseTypeIds.DICTIONARY: "tag:bt.co,2019/dictionary",
-    BaseTypeIds.PACKABLE: "tag:bt.co,2019/packable"
+    BaseTypeIds.LIST: Tag("tag:bt.co,2019/list"),
+    BaseTypeIds.DICTIONARY: Tag("tag:bt.co,2019/dictionary"),
+    BaseTypeIds.PACKABLE: Tag("tag:bt.co,2019/packable")
 }
 
 
@@ -268,7 +337,7 @@ BaseTypeTags = {
 ## Type Helper functions.
 ##
 
-# TODO: Consider making these a sub-module, frx TypeHelpers.IsValueTypeId(someId).
+# TODO: Consider making these a sub-module, frx BaseTypeHelpers.IsValueTypeId(someId).
 
 def isValueTypeId(id):
     """"""
@@ -281,9 +350,9 @@ def isStorageTypeId(id):
                   BaseTypeIds.BLOB)
 
 
-def isStructureId(id):
+def isStructureTypeId(id):
     """"""
-    return id == BaseTypeIds.PAIR # TODO: Add color, geolocation, predicate
+    return id in (BaseTypeIds.PAIR) # TODO: Add color, geolocation, predicate
 
 
 def isCollectionTypeId(id):
@@ -311,6 +380,9 @@ def isBaseTypePair(val):
 
 # TODO: Add color, geolocation, predicate 'is' checks.
 
+def isBaseTypeTag(val):
+    """Returns true if the passed value is a tag object, otherwise returns false."""
+    return isinstance(val, Tag)
 
 def isBaseTypeList(val):
     """Returns true if the passed value is a list where all members
@@ -372,7 +444,7 @@ _baseTypeCheckers = {
     BaseTypeIds.DATETIME: isDateTime,
     BaseTypeIds.STRING: isString,
     BaseTypeIds.URN: isString, # TODO: Fix
-    BaseTypeIds.TAG: isString, # TODO: Fix
+    BaseTypeIds.TAG: isBaseTypeTag,
     BaseTypeIds.BLOB: isString, # TODO: Fix
     BaseTypeIds.PAIR: isBaseTypePair,
     # TODO: Add color, geolocation, predicate
@@ -382,7 +454,7 @@ _baseTypeCheckers = {
 }
 
 
-def checkBaseType(val, baseTypeEnum):
+def checkBaseType(baseTypeEnum, val):
     """Returns true if the passed value is a valid type for the
     passed Base Types enumeration."""
     try:
