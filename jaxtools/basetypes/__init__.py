@@ -358,7 +358,7 @@ BaseTypeTags = {
 
 
 ##
-## Required Type Helper functions. (There are more type helpers in basetypestypehelpers.py.)
+## Required Type Helper functions. (There are more type helpers in typehelpers.py.)
 ##
 
 def isBaseTypePair(val):

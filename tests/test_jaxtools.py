@@ -5,7 +5,6 @@ import unittest
 from jaxtools.basetypes import *
 from datetime import datetime, date as dt
 
-
 class TestBaseTypes(unittest.TestCase):
 
     def test_isBaseTypeBasic(self):
