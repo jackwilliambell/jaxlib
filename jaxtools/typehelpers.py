@@ -62,10 +62,7 @@ def isInt(val):
     **Returns:**
 
     True if the passed value is a int value, otherwise false."""
-    if not isBool(val) and type(val) is int:
-        return True
-
-    return False
+    return not isBool(val) and type(val) is int
 
 
 def isFloat(val):
@@ -82,10 +79,7 @@ def isFloat(val):
     **Returns:**
 
     True if the passed value is a float, otherwise false."""
-    if type(val) is float:
-        return True
-
-    return False
+    return type(val) is float
 
 
 def isNum(val):
@@ -103,11 +97,8 @@ def isNum(val):
 
     True if the passed value is a numeric value, otherwise false."""
     if not isBool(val):
-        if isinstance(val, int):
-            return True
-        elif isinstance(val, float):
-            return True
-    
+        return isinstance(val, (int, float))
+
     return False
 
 

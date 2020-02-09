@@ -5,6 +5,7 @@ import unittest
 from jaxtools.basetypes import *
 from datetime import datetime, date as dt
 
+
 class TestBaseTypes(unittest.TestCase):
 
     def test_isBaseTypeBasic(self):
@@ -68,7 +69,7 @@ class TestBaseTypes(unittest.TestCase):
         self.assertEqual(getBaseTypeId(t), BaseTypeIds.LIST, "Empty tuple should be valid base type. (List)")
         self.assertRaises(TypeError, getBaseTypeId, self, "Test class should not be valid base type.")
 
-    def test_TagTypeBasic(self):
+    def test_TagTypeClassBasic(self):
         t = Tag(tagUri="tag:bt.co,2019:null")
         self.assertEqual(t.authority, "bt.co", "Authority.")
         self.assertEqual(t.dateString(), "2019", "Date String.")
