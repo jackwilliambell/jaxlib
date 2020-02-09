@@ -93,7 +93,7 @@ when unpacking
 Created by Jack William Bell on 2016-10-16.
 Copyright (c) 2016, 2018 Jack William Bell. License: MIT"""
 
-from jaxtools.basetypeids import PropertySheet, PackedState, \
+from jaxtools.basetypes import PropertySheet, PackedState, \
     isPackableType, isPropertySheet
 from jaxtools.typehelpers import isNone, isBool, isString, isInt, \
     isNum, isTuple, isList, isDict

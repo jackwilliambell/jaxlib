@@ -32,8 +32,11 @@ def isNone(val):
 
 
 def isBool(val):
-    """Returns true if the passed value is the Python booleanf
+    """Returns true if the passed value is the Python boolean
     type, otherwise false.
+
+    NOTE: Does not return true if not an actual bool type. Other
+    numeric types return false.
     
     **Parameters:**
     
@@ -42,48 +45,94 @@ def isBool(val):
     **Returns:**
     
     True if the passed value is a boolean, otherwise false."""
-    return isinstance(val, bool)
+    return type(val) is bool
 
 
 def isInt(val):
-    """Returns true if the passed value is a Python integer
-value, otherwise false. (Returns true for any numeric type that is
-an integer value, with no decimal places.)
+    """Returns true if the passed value is an int
+    value, otherwise false.
 
-**Parameters:**
+    NOTE: Returns true only if the value is an int type. See
+    isIntNum() for a less restrictive test.
 
-* val - value to test
+    **Parameters:**
 
-**Returns:**
+    * val - value to test
 
-True if the passed value is an integer value, otherwise false."""
-    # Does it have the right interface?
-    if isinstance(val, int):
+    **Returns:**
+
+    True if the passed value is a int value, otherwise false."""
+    if not isBool(val) and type(val) is int:
         return True
-    elif isinstance(val, float):
-        # Is it an integer?
-        return val.is_integer()
-    
+
+    return False
+
+
+def isFloat(val):
+    """Returns true if the passed value is a float
+    value, otherwise false.
+
+    NOTE: Returns true only if the value is a float type. See
+    isNum() for a less restrictive test.
+
+    **Parameters:**
+
+    * val - value to test
+
+    **Returns:**
+
+    True if the passed value is a float, otherwise false."""
+    if type(val) is float:
+        return True
+
     return False
 
 
 def isNum(val):
     """Returns true if the passed value is a Python numeric
-value, otherwise false. (Returns true for any numeric type.)
+    value, otherwise false. (Returns true for any numeric type.)
 
-**Parameters:**
+    NOTE: Returns true for any numeric type. Does not return true
+    for bool type values.
 
-* val - value to test
+    **Parameters:**
 
-**Returns:**
+    * val - value to test
 
-True if the passed value is a numeric value, otherwise false."""
-    # Does it have the right interface?
-    if isinstance(val, int):
-        return True
-    elif isinstance(val, float):
-        return True
+    **Returns:**
+
+    True if the passed value is a numeric value, otherwise false."""
+    if not isBool(val):
+        if isinstance(val, int):
+            return True
+        elif isinstance(val, float):
+            return True
     
+    return False
+
+
+def isIntNum(val):
+    """Returns true if the passed value is a Python integer
+    value, otherwise false. (Returns true for any numeric type that is
+    an integer value, with no decimal places.)
+
+    NOTE: Returns true for any numeric type that is an integer value
+    (no decimals). Does not return true for bool type values.
+
+    **Parameters:**
+
+    * val - value to test
+
+    **Returns:**
+
+    True if the passed value is an integer value, otherwise false."""
+    if not isBool(val):
+        if isinstance(val, int):
+            return True
+        elif isinstance(val, float):
+            # Is it an integer?
+            return val.is_integer()
+
     return False
 
 

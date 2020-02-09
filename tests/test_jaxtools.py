@@ -2,8 +2,8 @@ import unittest
 # unittest docs: https://docs.python.org/3/library/unittest.html
 
 # We import everything with * because name collisions are an error in themselves.
-from jaxtools.basetypeids import *
-
+from jaxtools.basetypes import *
+from datetime import datetime, date as dt
 
 class TestBaseTypes(unittest.TestCase):
 
@@ -18,9 +18,6 @@ class TestBaseTypes(unittest.TestCase):
         self.assertTrue(isBaseType(-1001.001), "Float or double should be valid base type. (Num)")
         self.assertTrue(isBaseType("Regular String"), "String should be valid base type. (String)")
         self.assertTrue(isBaseType(u"Unicode String"), "Unicode String should be valid base type. (String)")
-        self.assertTrue(isBaseType(None), "None should be valid base type. (Null)")
-        self.assertTrue(isBaseType(None), "None should be valid base type. (Null)")
-        self.assertTrue(isBaseType(None), "None should be valid base type. (Null)")
         self.assertTrue(isBaseType(d), "Empty dictionary should be valid base type. (Dict)")
         self.assertTrue(isBaseType(l), "Empty list should be valid base type. (List)")
         self.assertTrue(isBaseType(t), "Empty tuple should be valid base type. (List)")
@@ -53,6 +50,51 @@ class TestBaseTypes(unittest.TestCase):
         self.assertFalse(isBaseType(dbad1), "Complex dict containing non-string key is not valid base type.")
         self.assertFalse(isBaseType(dbad2), "Complex nested dict containing non basetypes is not valid base type.")
         # TODO: Add even more complex nested dicts and lists.
+
+    def test_getBaseTypeIdBasic(self):
+        d = {}
+        l = []
+        t = ()
+        self.assertEqual(getBaseTypeId(None), BaseTypeIds.NULL, "None should be valid base type. (Null)")
+        self.assertEqual(getBaseTypeId(True), BaseTypeIds.BOOL, "Bool should be valid base type. (Bool)")
+        self.assertEqual(getBaseTypeId(1001), BaseTypeIds.INT, "Integer should be valid base type. (Int)")
+        self.assertEqual(getBaseTypeId(-1001), BaseTypeIds.INT, "Integer should be valid base type. (Int)")
+        self.assertEqual(getBaseTypeId(1001.001), BaseTypeIds.FLOAT, "Float or double should be valid base type. (Num)")
+        self.assertEqual(getBaseTypeId(-1001.001), BaseTypeIds.FLOAT, "Float or double should be valid base type. (Num)")
+        self.assertEqual(getBaseTypeId("Regular String"), BaseTypeIds.STRING, "String should be valid base type. (String)")
+        self.assertEqual(getBaseTypeId(u"Unicode String"), BaseTypeIds.STRING, "Unicode String should be valid base type. (String)")
+        self.assertEqual(getBaseTypeId(d), BaseTypeIds.DICTIONARY, "Empty dictionary should be valid base type. (Dict)")
+        self.assertEqual(getBaseTypeId(l), BaseTypeIds.LIST, "Empty list should be valid base type. (List)")
+        self.assertEqual(getBaseTypeId(t), BaseTypeIds.LIST, "Empty tuple should be valid base type. (List)")
+        self.assertRaises(TypeError, getBaseTypeId, self, "Test class should not be valid base type.")
+
+    def test_TagTypeBasic(self):
+        t = Tag(tagUri="tag:bt.co,2019:null")
+        self.assertEqual(t.authority, "bt.co", "Authority.")
+        self.assertEqual(t.dateString(), "2019", "Date String.")
+        self.assertEqual(t.specific, "null", "Specific Name.")
+        self.assertEqual(t.fragment, None, "Fragment.")
+        self.assertEqual(t.__str__(), "tag:bt.co,2019:null", "__str__().")
+
+        t = Tag(tagUri="tag:bt.co,2019:null#frag value")
+        self.assertEqual(t.authority, "bt.co", "Authority.")
+        self.assertEqual(t.dateString(), "2019", "Date String.")
+        self.assertEqual(t.specific, "null", "Specific Name.")
+        self.assertEqual(t.fragment, "frag value", "Fragment.")
+        self.assertEqual(t.__str__(), "tag:bt.co,2019:null#frag value", "__str__().")
+
+        t = Tag(authority="bt.co", date=dt(2019, 1, 1), specific="null", fragment="frag value")
+        self.assertEqual(t.authority, "bt.co", "Authority.")
+        self.assertEqual(t.dateString(), "2019", "Date String.")
+        self.assertEqual(t.specific, "null", "Specific Name.")
+        self.assertEqual(t.fragment, "frag value", "Fragment.")
+        self.assertEqual(t.__str__(), "tag:bt.co,2019:null#frag value", "__str__().")
+
+        t = Tag(tagUri="tag:bt.co,2019-4:null")
+        self.assertEqual(t.dateString(), "2019-4", "Date String.")
+
+        t = Tag(tagUri="tag:bt.co,2019-4-28:null")
+        self.assertEqual(t.dateString(), "2019-4-28", "Date String.")
 
 
 if __name__ == '__main__':

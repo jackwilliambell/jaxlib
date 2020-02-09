@@ -218,7 +218,7 @@ from datetime import datetime, date as dt
 
 from abc import ABCMeta, abstractmethod
 
-from jaxtools.typehelpers import isNone, isBool, isString, isInt, \
+from jaxtools.typehelpers import isNone, isBool, isString, isInt, isFloat, \
     isNum, isTuple, isList, isDict, isFunction, isDateTime, isDate
 
 ##
@@ -232,9 +232,9 @@ class Tag(object):
     """
     def __init__(self, tagUri=None, authority=None, date=None,
                  specific=None, fragment=None):
-
+        # Do we have a tag URI?
         if isString(tagUri):
-            # Attempt to parse the tag string. Start by splitting on colons to get
+            # Attempt to parse the tag URI. Start by splitting on colons to get
             # the three main bits.
             colonSplit = tagUri.split(':')
             if len(colonSplit) == 3 and colonSplit[0].lower() == 'tag':
@@ -264,7 +264,7 @@ class Tag(object):
                     raise ValueError("tagUri not a valid RFC 4151 Tag URI (fragment).")
                 if len(hashSplit) >= 1 and specific is None:
                     specific = hashSplit[0]
-                if len(hashSplit == 2) and fragment is None:
+                if len(hashSplit) == 2 and fragment is None:
                     fragment = hashSplit[1]
             else:
                 raise ValueError("tagUri not a valid RFC 4151 Tag URI.")
@@ -285,7 +285,7 @@ class Tag(object):
             raise TypeError("Invalid argument type (date).")
         if not isString(specific):
             raise TypeError("Invalid argument type (specific).")
-        if not isString(fragment) or fragment is not None:
+        if not isString(fragment) and fragment is not None:
             raise TypeError("Invalid argument type (fragment).")
 
         # If we made it all the way here we are good!
@@ -307,8 +307,8 @@ class Tag(object):
                 return "{}".format(self.date.year)
             else:
                 return "{}-{}".format(self.date.year, self.date.month)
-        else:
-            return "{}-{}-{}".format(self.date.year, self.date.month, self.date.day)
+
+        return "{}-{}-{}".format(self.date.year, self.date.month, self.date.day)
 
     def taggingEntityString(self):
         return "{},{}".format(self.authority, self.dateString())
@@ -340,59 +340,26 @@ class BaseTypeIds(Enum):
 
 BaseTypeTags = {
     # TODO: Use a real dsn name instead of 'bt.co', which may be in use.
-    BaseTypeIds.NULL: Tag(tagUri="tag:bt.co,2019/null"),
-    BaseTypeIds.BOOL: Tag(tagUri="tag:bt.co,2019/bool"),
-    BaseTypeIds.INT: Tag(tagUri="tag:bt.co,2019/int"),
-    BaseTypeIds.FLOAT: Tag(tagUri="tag:bt.co,2019/float"),
-    BaseTypeIds.DATETIME: Tag(tagUri="tag:bt.co,2019/date"),
-    BaseTypeIds.STRING: Tag(tagUri="tag:bt.co,2019/string"),
-    BaseTypeIds.URN: Tag(tagUri="tag:bt.co,2019/urn"),
-    BaseTypeIds.TAG: Tag(tagUri="tag:bt.co,2019/tag"),
-    BaseTypeIds.BLOB: Tag(tagUri="tag:bt.co,2019/blob"),
-    BaseTypeIds.PAIR: Tag(tagUri="tag:bt.co,2019/pair"),
+    BaseTypeIds.NULL: Tag(tagUri="tag:bt.co,2019:null"),
+    BaseTypeIds.BOOL: Tag(tagUri="tag:bt.co,2019:bool"),
+    BaseTypeIds.INT: Tag(tagUri="tag:bt.co,2019:int"),
+    BaseTypeIds.FLOAT: Tag(tagUri="tag:bt.co,2019:float"),
+    BaseTypeIds.DATETIME: Tag(tagUri="tag:bt.co,2019:date"),
+    BaseTypeIds.STRING: Tag(tagUri="tag:bt.co,2019:string"),
+    BaseTypeIds.URN: Tag(tagUri="tag:bt.co,2019:urn"),
+    BaseTypeIds.TAG: Tag(tagUri="tag:bt.co,2019:tag"),
+    BaseTypeIds.BLOB: Tag(tagUri="tag:bt.co,2019:blob"),
+    BaseTypeIds.PAIR: Tag(tagUri="tag:bt.co,2019:pair"),
     # TODO: Add color, geolocation, predicate
-    BaseTypeIds.LIST: Tag(tagUri="tag:bt.co,2019/list"),
-    BaseTypeIds.DICTIONARY: Tag(tagUri="tag:bt.co,2019/dictionary"),
-    BaseTypeIds.PACKABLE: Tag(tagUri="tag:bt.co,2019/packable")
+    BaseTypeIds.LIST: Tag(tagUri="tag:bt.co,2019:list"),
+    BaseTypeIds.DICTIONARY: Tag(tagUri="tag:bt.co,2019:dictionary"),
+    BaseTypeIds.PACKABLE: Tag(tagUri="tag:bt.co,2019:packable")
 }
 
 
 ##
-## Type Helper functions.
+## Required Type Helper functions. (There are more type helpers in basetypehelpers.py.)
 ##
-
-# TODO: Consider making these a sub-module, frx BaseTypeHelpers.IsValueTypeId(someId).
-
-def isValueTypeId(id):
-    """"""
-    return id in (BaseTypeIds.NULL, BaseTypeIds.BOOL, BaseTypeIds.INT, BaseTypeIds.FLOAT)
-
-
-def isStorageTypeId(id):
-    """"""
-    return id in (BaseTypeIds.DATE, BaseTypeIds.STRING, BaseTypeIds.URL, BaseTypeIds.TAG,
-                  BaseTypeIds.BLOB)
-
-
-def isStructureTypeId(id):
-    """"""
-    return id in (BaseTypeIds.PAIR) # TODO: Add color, geolocation, predicate
-
-
-def isCollectionTypeId(id):
-    """"""
-    return id in (BaseTypeIds.DICTIONARY, BaseTypeIds.LIST)
-
-
-def isPackableTypeId(id):
-    """"""
-    return id == BaseTypeIds.PACKABLE
-
-
-def isEndTypeId(id):
-    """"""
-    return id == BaseTypeIds.END
-
 
 def isBaseTypePair(val):
     """"""
@@ -464,12 +431,12 @@ _baseTypeCheckers = {
     BaseTypeIds.NULL: isNone,
     BaseTypeIds.BOOL: isBool,
     BaseTypeIds.INT: isInt,
-    BaseTypeIds.FLOAT: isNum,
+    BaseTypeIds.FLOAT: isFloat,
     BaseTypeIds.DATETIME: isDateTime,
     BaseTypeIds.STRING: isString,
-    BaseTypeIds.URN: isString, # TODO: Fix
+    #BaseTypeIds.URN: isString, # TODO: Fix
     BaseTypeIds.TAG: isBaseTypeTag,
-    BaseTypeIds.BLOB: isString, # TODO: Fix
+    #BaseTypeIds.BLOB: isString, # TODO: Fix
     BaseTypeIds.PAIR: isBaseTypePair,
     # TODO: Add color, geolocation, predicate
     BaseTypeIds.LIST: isBaseTypeList,
