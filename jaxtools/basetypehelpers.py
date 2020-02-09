@@ -5,7 +5,7 @@
 from jaxtools.basetypes import *
 
 ##
-## Type Helper functions.
+## Extended Type Helper functions.
 ##
 
 def isValueTypeId(id):
@@ -38,3 +38,8 @@ def isEndTypeId(id):
     """"""
     return id == BaseTypeIds.END
 
+
+# TODO: Add coerce type functions that check strings or other types
+# for values that can be coerced into a specific base type and return
+# the converted value as the requested type or throw an exception if
+# it cannot be converted.
