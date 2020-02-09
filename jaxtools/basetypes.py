@@ -358,7 +358,7 @@ BaseTypeTags = {
 
 
 ##
-## Required Type Helper functions. (There are more type helpers in basetypehelpers.py.)
+## Required Type Helper functions. (There are more type helpers in basetypestypehelpers.py.)
 ##
 
 def isBaseTypePair(val):
@@ -614,8 +614,9 @@ class BaseTypeReader(metaclass=ABCMeta):
         pass
 
     def close(self):
-        """Closes the reader and releases its resources."""
-        pass # Abstract method, may be implemented if required by the use case.
+        """Closes the reader and releases its resources. Default implementation
+        does nothing, override only if required by the use case."""
+        pass
 
 
 class BaseTypeWriter(metaclass=ABCMeta):
@@ -698,8 +699,9 @@ class BaseTypeWriter(metaclass=ABCMeta):
         pass
 
     def close(self):
-        """Closes the writer and releases its resources."""
-        pass # Abstract method, may be implemented if required by the use case.
+        """Closes the writer and releases its resources. Default implementation
+        does nothing, override only if required by the use case."""
+        pass
 
 
 class NotInACollectionError(Exception):
@@ -710,13 +712,11 @@ class NotInACollectionError(Exception):
 
 class InvalidKeyError(Exception):
     """Error raised when writing a dict member with a missing key or starting a pair with
-    and invalid key."""
+    an invalid key."""
     pass
 
 
 class InvalidTypeError(Exception):
     """Error raised when writing a value that is not a base type."""
     pass
-
-
 

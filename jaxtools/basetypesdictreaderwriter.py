@@ -3,6 +3,7 @@
 """
 
 from jaxtools.basetypes import *
+from jaxtools.basetypesreaderwriterhelpers import *
 
 
 class DictReader(BaseTypeReader):
