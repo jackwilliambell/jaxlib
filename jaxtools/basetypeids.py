@@ -210,7 +210,7 @@ the Packable interface and can be 'packed' and 'unpacked'.
 
 Created by Jack William Bell on 2016-10-16, last updated 2019-12-10.
 
-Copyright (c) 2016, 2018 Jack William Bell. License: MIT"""
+Copyright (c) 2016, 2018, 2019 Jack William Bell. License: MIT"""
 
 from enum import Enum
 
@@ -234,7 +234,8 @@ class Tag(object):
                  specific=None, fragment=None):
 
         if isString(tagUri):
-            # Attempt to parse the tag string. Start by splitting on colons.
+            # Attempt to parse the tag string. Start by splitting on colons to get
+            # the three main bits.
             colonSplit = tagUri.split(':')
             if len(colonSplit) == 3 and colonSplit[0].lower() == 'tag':
                 # Split the tagging entity on commas.
@@ -263,7 +264,7 @@ class Tag(object):
                     raise ValueError("tagUri not a valid RFC 4151 Tag URI (fragment).")
                 if len(hashSplit) >= 1 and specific is None:
                     specific = hashSplit[0]
-                if len(hashSplit <= 2) and fragment is None:
+                if len(hashSplit == 2) and fragment is None:
                     fragment = hashSplit[1]
             else:
                 raise ValueError("tagUri not a valid RFC 4151 Tag URI.")
@@ -272,10 +273,12 @@ class Tag(object):
 
         # Do we have a date at this point?
         if date is None:
+            # Default to current year.
             date = dt(datetime.now().date().year, 1, 1)
 
         # Double-check each argument type, since they could have been parsed from
         # the tag string or they could have been passed separately.
+        # TODO: Consider if we want to check for empty strings on any of these.
         if not isString(authority):
             raise TypeError("Invalid argument type (authority).")
         if not isDate(date):
