@@ -94,12 +94,8 @@ Created by Jack William Bell on 2016-10-16.
 Copyright (c) 2016, 2018 Jack William Bell. License: MIT"""
 
 from jaxtools.basetypes import PropertySheet, PackedState, \
-    isPackableType, isPropertySheet
-from jaxtools.typehelpers import isNone, isBool, isString, isInt, \
-    isNum, isTuple, isList, isDict
-from jaxtools.serialization import DictionaryWriter, DictionaryReader
-
-
+    isPackableType
+from python.typehelpers import isString
 
 
 ##

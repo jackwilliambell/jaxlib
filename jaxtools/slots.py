@@ -12,7 +12,6 @@ supports overriding slots locally if they are not reserved, while using the
 parent instance if they are reserved.
 """
 
-from typehelpers import isDict
 
 class Slots(object):
 	"""Holds a set of named Pluggables which are 'plugged into' slots. Some slot 

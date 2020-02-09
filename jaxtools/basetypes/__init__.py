@@ -218,8 +218,8 @@ from datetime import datetime, date as dt
 
 from abc import ABCMeta, abstractmethod
 
-from jaxtools.typehelpers import isNone, isBool, isString, isInt, isFloat, \
-    isNum, isTuple, isList, isDict, isFunction, isDateTime, isDate
+from jaxtools.python.typehelpers import isNone, isBool, isString, isInt, isFloat, \
+    isTuple, isList, isDict, isDateTime, isDate
 
 ##
 ## Tag type.
