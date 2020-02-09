@@ -1,216 +1,242 @@
-"""# Base Types
+"""Created by Jack William Bell on 2016-10-16, last updated 2019-12-10.
 
-Base types are a set of basic data types that
-are easy to serialize and are either a standard
-type of nearly every programming languge or are
-easy to implement/emulate if not.
+Copyright (c) 2016, 2018, 2019 Jack William Bell. License: MIT
 
-Base types include low-level value types like boolean and
-int along with a storage types like string and blob, a
-set of common data structures like list and dictionary,
-and the Packable type, which more complex objects can inherit
-from to support easy serialization/deserialization.
+# Base Types
 
-## List of base types
+Base types are a set of basic data types, all of which are easy to serialize and are
+either a standard type of nearly every programming languge or are easy to
+implement/emulate if not.
 
-These base types, their tags, and their Python representations are:
-
-* null - types.NoneType
-
-* bool - types.BooleanType
-
-* int - types.IntType, types.LongType; also types.FloatType if no decimals
-
-* float - types.FloatType; also types.IntType, types.LongType
-
-* datetime - datetime.datetime
-
-* string - types.StringType, types.UnicodeType
-
-* urn - TODO: Consider use cases. Create a URN type? Make URI instead?
-
-* TODO: Add 'tag' type with a name, date, other? See user-defined tags
-as used in YAML. Need to implement tag type or otherwise define it.
-
-* blob - types.BufferType
-
-* pair - types.TupleType of two members, from 1 to 2:
-    - name (string, cannot be empty)
-    - value (any base type value other than a pair; in other words
-    a pair cannot contain another pair as a value)
-
-* geolocation - types.TupleType of three members, from 1 to 3:
-    - lattitude (float from -90 to +90)
-    - longitude (float from -180 to +180)
-    - altitude (float, units in meters, zero is sea level)
-
-* color - types.TupleType of three to seven members where only the
-first three are required and the other four are each additionally
-optional (meaning you can have a five member color including Hue
-and without Saturation, but if you want Saturation without Hue
-it will be a six member color and you will need to set the Hue
-value to 'not supplied'), these are from 1 to 7:
-    - Red (integer from 0 to 255)
-    - Green (integer from 0 to 255)
-    - Blue (integer from 0 to 255)
-    - Alpha (float from 0 to 1, negative value means 'not supplied')
-    - Hue (float from 0 to 1, negative value means 'not supplied')
-    - Saturation (float from 0 to 1, negative value means 'not supplied')
-    - Luminosity (float from 0 to 1, negative value means 'not supplied')
-
-* predicate - types.TupleType of three members, from 1 to 3:
-    - object (any value or storage base type)
-    - verb (tag, may be empty)
-    - subject (any value or storage base type)
-
-* list - types.ListType (except all list members must be base types
-and types.TupleType is supported by converting to a list)
-
-* dictionary - types.DictType (except dictionary keys must be strings
-and values must be base types)
-
-* packable - jaxtools.basetypes.Packable
+Base types include low-level value types like boolean and int, storage types like
+string and blob, a set of common data structures like color and geolocation,
+collections like list and dictionary, and the Packable type – more complex objects can
+inherit from to support easy serialization/deserialization.
 
 ## Goals
 
-* Provide a predictable machine and language-independent way to store
-data and to transfer data between applications
+* Provide a predictable machine and language-independent way to store data and to
+transfer data between applications
 
-* Restrict data values to a small, but comprehensive, set of known
-types; where the types are easy to serialize and are either a standard
-type of nearly every programming languge or are easy to
-implement/emulate if not
+* Restrict data values to a small, but comprehensive, set of known types; where the
+types are easy to serialize and are either a standard type of nearly every programming
+languge or are easy to implement/emulate if not
 
-* Provide a predictable machine and language-independent way to ensure
-data interchange by serializing to and deserializing from standard data
-interchange formats such as JSON and YAML or even common wire
-data transfer formats like HTTP MIME types and 'multipart/form-data'
-    - Object types not directly supported by standard data interchange
-    formats must remain serializable to their syntax using some
-    format-appropriate rules and representations
+* Provide a predictable machine and language-independent way to ensure data interchange
+by serializing to and deserializing from standard data interchange formats such as JSON
+and YAML or even common wire data transfer formats like HTTP MIME types and
+'multipart/form-data' - Object types not directly supported by standard data
+interchange formats must remain serializable to the syntax of those formats using
+format-appropriate rules and representations
 
-* Provide a rich set of object types not directly supported by the standard
-data interchange formats, but which do enable common use cases and arbitrary
-object types
+* Provide a rich set of object types not directly supported by the standard data
+interchange formats, but which do enable common use cases and arbitrary object types
 
-* Provide a predictable machine and language-independent way to
-represent the state of arbitrary objects; so long as the object's
-state can be represented in base types (See 'packables')
+* Provide a predictable machine and language-independent way to represent the state of
+arbitrary objects; so long as the object's state can be represented in base types (See
+'packables')
 
-* Provide a predictable machine and language-independent way to
-represent the state of Common Objects (CO); IE objects with similar state
-and implementations, but not using the same classes or even the same
-programming language (See 'packables')
+* Provide a predictable machine and language-independent way to represent the state of
+Common Objects (CO); IE objects with similar state and implementations, but not using
+the same classes or even the same programming language (See 'packables')
 
-* Provide a high level of safety when deserializing objects from unknown
-sources
+* Provide a high level of safety when deserializing objects from unknown sources
 
 ## Non-goals
 
-* Base types are not meant for general computation, so usages other
-than data storage or data interchange may be non-optimal; especially
-for collection types
+* Base types are not meant for general computation, so usages other than data storage
+or data interchange may be non-optimal; especially for structure and collection types
 
-* No attempt is made to optimize for processing speed or memory and
-some base type APIs may be particuarily slow when used with large or
-deeply nested collections (See isBaseType() and the to/from dictionary
-methods of propertysheet and packedstate)
+* No attempt is made to optimize for processing speed or memory and some base type APIs
+may be particuarily slow when used with large/deeply nested collections or packable
+objects
 
 * Base types do not support every possible object type
 
 * Base types do not support every possible data interchange format
 
+## Tags
+
+TODO: describe the tags and how they are used.
+
+## Schemas
+
+TODO: describe schemas and how they are used.
+
+## Serialization
+
+When serializing base type values to a data interchange format you should always use
+the corresponding types supported by that format. If the format does not support a
+particular type (for example, JSON doesn't directly support int or datetime primitives)
+you should use a commonly accepted way of encoding the data (for example, with JSON use
+int and float both as JSON number types and convert datetime to a JSON string using ISO
+8601 format). You may need to provide a 'hint' (as an element attribute, as part of a
+structure, or even added to the key value) to specify the type when deserializing. A
+better option is to serialize appropriately for the type and deserialize using a
+schema. Using 'recognizers' to intuit the base types from encoded data interchange
+types is not recommended.
+
+Value base types are most likely to be supported by a data interchange format's
+primitive types. Storage base type support may only be in the form of strings, but
+other storage types have common string representations and there are common ways of
+encoding blobs to strings (most notably Base64). Structure base types should be in the
+form of lists or tuples (if supported by the data interchange format) using the
+definition for each type; there is no need to use a dictionary and specify structure
+type field keys. Collection base types may be supported directly by the data
+interchange format; if not some commonly accepted encoding may be used. The packable
+base type is supported by writing the object contents out to a dictionary with a header
+and an associated schema and reversing the process by reading the dictionary in.
+
 ## Value base types
 
-Value types are a commonly used subset of primitive data values.
-All value types may be represented in memory with
-a known byte size, making their memory requirements predictable.
-The set of base types includes five value types: null, bool, int,
-float, and date.
+Value types are a commonly used subset of primitive data values. All value types may be
+represented in memory with a known byte size, making their memory requirements
+predictable. The set of base types includes five value types: null, bool, int, float,
+and datetime.
 
-In general all value types will work the same for all APIs and
-when transferred to another base type software implementation.
+In general all value types will work the same for all APIs and when transferred to
+another base type software implementation.
+
+The value types, their tags, and their Python representations are:
+
+* null – "tag:bt.co,2019:null" – types.NoneType
+
+* bool – "tag:bt.co,2019:bool" – types.BooleanType
+
+* int – "tag:bt.co,2019:int" – types.IntType, types.LongType
+
+* float – "tag:bt.co,2019:float" – types.FloatType
+
+* datetime – "tag:bt.co,2019:datetime" – datetime.datetime
 
 ## Storage base types
 
-Storage base types consist of simple and commonly used types that
-contain zero to N bytes of data and their storage requirements are not
-predictable. They may provide methods to access their contents by
-offset or by some structured chunk. The set of base types includes
-four storage types: string, urn, tag, and blob.
+Storage base types consist of simple and commonly used types that contain zero to N
+bytes of data and their storage requirements are not predictable. They may provide
+methods to access their contents by offset or by some structured chunk. The set of base
+types includes four storage types: string, urn, tag, and blob.
 
-While there is no design limit to the upper size of storage types, in
-practice the total number of bytes you can store in each storage type
-is determined by the programming language and the implementation of the
-type. Moreover, particularity large storage types may fail to work
-properly or cause exceptions when passed to some APIs or when
-transferred to another base type software implementation.
+While there is no design limit to the upper size of storage types, in practice the
+total number of bytes you can store in each storage type is determined by the
+programming language and the implementation of the type. Moreover, particularity large
+storage types may fail to work properly or cause exceptions when passed to some APIs or
+when transferred to another base type software implementation.
 
-In general it is best to avoid very large byte sizes in storage types,
-if possible, and to test carefully if not. As a rule of thumb, storage
-types with less than 256K total bytes are probably fine while storage
-types which exceed that limit may be problematic.
+In general it is best to avoid very large byte sizes in storage types, if possible, and
+to test carefully if not. As a rule of thumb, storage types with less than 256K total
+bytes are probably fine while storage types which exceed that limit may be problematic.
 
-(NOTE: Python strings on a 64-bit machine may use hundreds of gigabytes
-of memory, but that does not mean APIs you pass them to will work properly.)
+(NOTE: Python strings on a 64-bit machine may use hundreds of gigabytes of memory, but
+that does not mean APIs you pass them to will work properly.)
+
+The value types, their tags, and their Python representations are:
+
+* string – "tag:bt.co,2019:string" – types.StringType, types.UnicodeType
+
+* urn – "tag:bt.co,2019:urn" – TODO: Consider use cases. Create a URN type? Make URI
+instead?
+
+* tag – "tag:bt.co,2019:tag" – jaxtools.basetypes.Tag
+
+* blob – "tag:bt.co,2019:blob" – types.BufferType
 
 ## Structure base types
 
-Structure base types consist of simple and commonly used data structures
-with a wide variety of use cases. There are currently four structure base
-types: pair, color, geolocation and predicate. (In the future there may
-be other structure types.)
+Structure base types consist of simple and commonly used data structures with a wide
+variety of use cases. Because some structure types may contain storage or collection
+base types as field values, their memory requirements are not predictable. (See also,
+storage base types and collection base types.)
 
-Structure types are likely to require conversion to a different, but
-similar, form before they may be used with local APIs. They may include
-data members not required for local usage. They may be used in ways
-different than the usage alluded to by their name.
+There are currently only a limited set of structure base types. In the future more may
+be added to the official set. You can also create custom structure types using
+collection types with a schema.
 
-## Pair
+Structure types are data only and are not objects in the sense that they have methods.
+In most cases structure types are likely to require conversion to a different, but
+similar, form before they may be used with local APIs. They may include data members
+not required for local usage. They may be used in ways different than the usage alluded
+to by their name.
 
-Pairs are represented as a 2-tuple where the first member of the pair
-*must be* a non-empty string and the second member *must
-be* a base type value other than a pair; in other words a pair cannot
-directly contain another pair and pairs cannot be nested. However, a
-pair may contain a list or a dictionary base type value, which themselves
+The value types, their tags, and their Python representations (more detail below) are:
+
+* pair – "tag:bt.co,2019:pair" – types.TupleType of two members: name and value
+
+* geolocation – "tag:bt.co,2019:geolocation" – types.TupleType of three members:
+lattitude, longitude, altitude
+
+* color – "tag:bt.co,2019:color" – types.TupleType of three to seven members:
+(required) red, green, blue; (optional) alpha, hue, saturation
+
+* predicate – "tag:bt.co,2019:predicate" – types.TupleType of three members: object,
+verb, subject
+
+### Pair
+
+Pairs are represented as a 2-tuple where the first member of the pair *must be* a
+non-empty string and the second member *must be* a base type value other than a pair;
+in other words a pair cannot directly contain another pair and pairs cannot be nested.
+However, a pair may contain a list or a dictionary base type value, which themselves
 contain pairs.
 
-TODO: Add color, geolocation, predicate
+### Geolocation
+
+TODO: from 1 to 3: - lattitude (float from -90 to +90) - longitude (float from -180 to
++180) - altitude (float, units in meters, zero is sea level)
+
+### Color
+
+TODO: where only the first three are required and the other four are each additionally
+optional (meaning you can have a five member color including Hue and without
+Saturation, but if you want Saturation without Hue it will be a six member color and
+you will need to set the Hue value to 'not supplied'), these are from 1 to 7: - Red
+(integer from 0 to 255) - Green (integer from 0 to 255) - Blue (integer from 0 to 255)
+- Alpha (float from 0 to 1, negative value means 'not supplied') - Hue (float from 0 to
+1, negative value means 'not supplied') - Saturation (float from 0 to 1, negative value
+means 'not supplied') - Luminosity (float from 0 to 1, negative value means 'not
+supplied')
+
+### Predicate
+
+TODO: from 1 to 3: - object (any value or storage base type) - verb (tag, may be empty)
+- subject (any value or storage base type)
 
 ## Collection base types
 
-The set of base types include two collection types: list and dictionary. By
-their nature, collection base type memory requirements are not predictable.
-Moreover, base type collections can be nested. Lists may contain lists and
-dictionaries as list members and dictionaries may contain lists and
-dictionaries as keyed values. While there is no design limit to this
-nesting, in practice deeply nested collections may fail to work properly
-or cause exceptions when passed to some APIs or when transferred to
-another base type software implementation.
+The set of base types include two collection types: list and dictionary. By their
+nature, collection base type memory requirements are not predictable. Moreover, base
+type collections can be nested. Lists may contain lists and dictionaries as list
+members and dictionaries may contain lists and dictionaries as keyed values. While
+there is no design limit to this nesting, in practice deeply nested collections may
+fail to work properly or cause exceptions when passed to some APIs or when transferred
+to another base type software implementation.
 
-Note: from a logical standpoint a dictionary is a list of pairs where the
-name portion of the pair is the dictionary key and must be unique. For this
-reason, a dictionary entry cannot contain a pair as a value because pairs
-cannot be directly nested. See Tuple base types.
+NOTE: from a logical standpoint a dictionary is a list of pairs where the name portion
+of the pair is the dictionary key and must be unique. For this reason, a dictionary
+entry cannot contain a pair as a value because pairs cannot be directly nested. See
+also, structure base types.
 
-Particularity large collections, with or without nesting, may also fail
-to work properly or cause exceptions when passed to some APIs. Also, large
-value types as collection members, such as very large strings or blobs, may
-cause problems as well.
+Particularity large collections, with or without nesting, may also fail to work
+properly or cause exceptions when passed to some APIs. Also, large value types as
+collection members, such as very large strings or blobs, may cause problems as well.
 
-In general it is best to avoid large and/or deeply nested collections if
-possible and to test carefully if not. As a rule of thumb, collections with
-less than 1K members or 8 deep nesting are probably fine while collections
-which exceed those limits may be problematic.
+In general it is best to avoid large and/or deeply nested collections if possible and
+to test carefully if not. As a rule of thumb, collections with less than 1K members or
+8 deep nesting are probably fine while collections which exceed those limits may be
+problematic.
+
+* list – "tag:bt.co,2019:list" – types.ListType (except all list members must be base
+types and types.TupleType is supported by converting to a list)
+
+* dictionary – "tag:bt.co,2019:dictionary" – types.DictType (except dictionary keys
+must be strings and values must be base types)
 
 ## Packable base type
 
-There is one 'packable' base type, which is simply an object that supports
-the Packable interface and can be 'packed' and 'unpacked'.
+There is one 'packable' base type, which is simply an object that supports the Packable
+interface and can be 'packed' and 'unpacked'.
 
-Created by Jack William Bell on 2016-10-16, last updated 2019-12-10.
-
-Copyright (c) 2016, 2018, 2019 Jack William Bell. License: MIT"""
+* packable – "tag:bt.co,2019:packable" – jaxtools.basetypes.Packable
+"""
 
 from enum import Enum
 
@@ -350,10 +376,13 @@ BaseTypeTags = {
     BaseTypeIds.TAG: Tag(tagUri="tag:bt.co,2019:tag"),
     BaseTypeIds.BLOB: Tag(tagUri="tag:bt.co,2019:blob"),
     BaseTypeIds.PAIR: Tag(tagUri="tag:bt.co,2019:pair"),
-    # TODO: Add color, geolocation, predicate
+    BaseTypeIds.COLOR: Tag(tagUri="tag:bt.co,2019:color"),
+    BaseTypeIds.GEOLOCATION: Tag(tagUri="tag:bt.co,2019:geolocation"),
+    BaseTypeIds.PREDICATE: Tag(tagUri="tag:bt.co,2019:predicate"),
     BaseTypeIds.LIST: Tag(tagUri="tag:bt.co,2019:list"),
     BaseTypeIds.DICTIONARY: Tag(tagUri="tag:bt.co,2019:dictionary"),
-    BaseTypeIds.PACKABLE: Tag(tagUri="tag:bt.co,2019:packable")
+    BaseTypeIds.PACKABLE: Tag(tagUri="tag:bt.co,2019:packable"),
+    BaseTypeIds.END: Tag(tagUri="tag:bt.co,2019:end")
 }
 
 
